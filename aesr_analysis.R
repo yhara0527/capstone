@@ -1,8 +1,8 @@
 library(tidyverse)
 library(ggplot2)
-school <- read.csv("E:/R Data/Capstone/aser/ASER2016GSchool.csv")
+school <- read.csv("aser/ASER2016GSchool.csv")
 head(school)
-child <- read.csv("E:/R Data/Capstone/aser/ASER2016Child.csv")
+child <- read.csv("aser/ASER2016Child.csv")
 
 RegionName <- c("2" =  "Panjab", 
                 "3" = "Sindh", 

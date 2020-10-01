@@ -3,9 +3,10 @@ title: "Exploring ASER2016 Pakistan Data"
 author: "Yusei Hara"
 date: "2020/10/1"
 output:
+  pdf_document: default
+  word_document: default
   html_document:
     df_print: paged
-  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -24,8 +25,8 @@ library(ggplot2)
 ```
 #### Data Installation
 ```{r}
-school <- read.csv("E:/R Data/Capstone/aser/ASER2016GSchool.csv")
-child <- read.csv("E:/R Data/Capstone/aser/ASER2016Child.csv")
+school <- read.csv("aser/ASER2016GSchool.csv")
+child <- read.csv("aser/ASER2016Child.csv")
 ```
 ```{r}
 RegionName <- c("2" =  "Panjab", 
@@ -64,7 +65,7 @@ child %>%
 gender_proportion = -0.5173675 means there are a little more girls in the dataset.</p>
 
 #### Eduation Status
-<p>1 = never enrolled; 2 = drop-out; 3 = currently enrolled</p>
+1 = never enrolled; 2 = drop-out; 3 = currently enrolled
 ```{r}
 child %>% 
   filter(DID == 266) %>% 
@@ -73,6 +74,7 @@ child %>%
 ```
 
 #### Education Status by Gender
+Both genders look pretty good interms of the absolute number of currently-enrolled-children 
 ```{r}
 child %>% 
   filter(DID == 266) %>% 
@@ -80,8 +82,15 @@ child %>%
   geom_histogram(bins = 3, binwidth = 1) +
   facet_grid(~C002, labeller = labeller(C002 = Gender))
 ```
-<p> Both genders look pretty good interms of the absolute number of currently-enrolled-children </p>
+
+
+
+
+
+
+
 #### The Enrollment Rate by Gender
+As a rate, both are doing pretty good
 ```{r}
 child %>% 
   filter(DID == 266) %>% 
@@ -94,7 +103,7 @@ child %>%
   geom_label(aes(label = enrollment_rate)) +
   scale_x_continuous(breaks = c(-1, 0), labels = c("Female", "Male"))
 ```
-<p>As a rate, both are doing pretty good</p>
+
 #### Comparison between Other Region
 ```{r}
 child %>% 
@@ -108,7 +117,9 @@ child %>%
 
 ```
 
-#### Within Gilgit-Baltistan
+#### Within Gilgit-Baltistan 
+
+Within Gilgit-Baltistan, Hunza is outperforming.
 ```{r}
 child %>% 
   filter(RID == 6) %>% 
@@ -119,4 +130,5 @@ child %>%
   scale_x_continuous(breaks = 260:266, labels = c("Gilgit", "Diamer", "Skardu", "Ghanshe", "Astore", "Ghizer", "Hunza-Nagar"))
     
 ```
-<p>Within Gilgit-Baltistan, Hunza is outperforming.</p>
+
+
