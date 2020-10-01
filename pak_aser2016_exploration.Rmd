@@ -3,10 +3,10 @@ title: "Exploring ASER2016 Pakistan Data"
 author: "Yusei Hara"
 date: "2020/10/1"
 output:
-  pdf_document: default
-  word_document: default
   html_document:
     df_print: paged
+  word_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -65,16 +65,16 @@ child %>%
 gender_proportion = -0.5173675 means there are a little more girls in the dataset.</p>
 
 #### Eduation Status
-1 = never enrolled; 2 = drop-out; 3 = currently enrolled
+
 ```{r}
 child %>% 
   filter(DID == 266) %>% 
   ggplot(aes(C003)) +
   geom_histogram(bins = 3)
 ```
+1 = never enrolled; 2 = drop-out; 3 = currently enrolled
 
 #### Education Status by Gender
-Both genders look pretty good interms of the absolute number of currently-enrolled-children 
 ```{r}
 child %>% 
   filter(DID == 266) %>% 
@@ -82,15 +82,9 @@ child %>%
   geom_histogram(bins = 3, binwidth = 1) +
   facet_grid(~C002, labeller = labeller(C002 = Gender))
 ```
-
-
-
-
-
-
+Both genders look pretty good interms of the absolute number of currently-enrolled-children 
 
 #### The Enrollment Rate by Gender
-As a rate, both are doing pretty good
 ```{r}
 child %>% 
   filter(DID == 266) %>% 
@@ -103,6 +97,7 @@ child %>%
   geom_label(aes(label = enrollment_rate)) +
   scale_x_continuous(breaks = c(-1, 0), labels = c("Female", "Male"))
 ```
+As a rate, both are doing pretty good
 
 #### Comparison between Other Region
 ```{r}
@@ -118,8 +113,6 @@ child %>%
 ```
 
 #### Within Gilgit-Baltistan 
-
-Within Gilgit-Baltistan, Hunza is outperforming.
 ```{r}
 child %>% 
   filter(RID == 6) %>% 
@@ -130,5 +123,5 @@ child %>%
   scale_x_continuous(breaks = 260:266, labels = c("Gilgit", "Diamer", "Skardu", "Ghanshe", "Astore", "Ghizer", "Hunza-Nagar"))
     
 ```
-
+Within Gilgit-Baltistan, Hunza is outperforming.
 
