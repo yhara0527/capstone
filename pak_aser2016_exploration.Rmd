@@ -22,6 +22,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r, message=FALSE}
 library(tidyverse)
 library(ggplot2)
+library(gghighlight)
 ```
 #### Data Installation
 ```{r}
@@ -79,7 +80,7 @@ child %>%
   ggplot(aes(C001)) +
   geom_histogram()
 ```
-Age is well sparsed
+<p>Age is well sparsed</p>
 
 #### Eduation Status
 
@@ -89,7 +90,7 @@ child %>%
   ggplot(aes(C003)) +
   geom_histogram(bins = 3)
 ```
-1 = never enrolled; 2 = drop-out; 3 = currently enrolled
+<p>1 = never enrolled; 2 = drop-out; 3 = currently enrolled</p>
 
 #### Education Status by Gender
 ```{r}
@@ -99,7 +100,7 @@ child %>%
   geom_histogram(bins = 3, binwidth = 1) +
   facet_grid(~C002, labeller = labeller(C002 = Gender))
 ```
-Both genders look pretty good interms of the absolute number of currently-enrolled-children 
+<p>Both genders look pretty good interms of the absolute number of currently-enrolled-children </p>
 
 #### The Enrollment Rate by Gender
 ```{r, message=FALSE}
@@ -114,7 +115,7 @@ child %>%
   geom_label(aes(label = enrollment_rate)) +
   scale_x_continuous(breaks = c(-1, 0), labels = c("Female", "Male"))
 ```
-As a rate, both are doing pretty good
+<p>As a rate, both are doing pretty good</p>
 
 #### Currently-Enrolled: Institution Type (C006)
 1 = Government; 2 = Private; 3 = Madrasah(Conventional religious education) School; 4 = Other(Non formal education facility)
@@ -125,22 +126,8 @@ child %>%
   geom_histogram()
 ```
 
-Most children go to public schools or private schools
+<p>Most children go to public schools or private schools</p>
 
-
-
-#### Comparison between Other Region
-```{r, message=FALSE}
-child %>% 
-  group_by(DID) %>% 
-  mutate(avg = round(mean(C003 == 3), digits = 2)) %>% 
-  ungroup() %>% 
-  ggplot(aes(avg)) +
-  geom_histogram() +
-  facet_grid(~RID, labeller = labeller(RID = RegionName)) +
-  labs(title = "Current Enrollment Rate by Region")
-
-```
 
 #### Within Gilgit-Baltistan 
 ```{r}
@@ -153,8 +140,15 @@ child %>%
   scale_x_continuous(breaks = 260:266, labels = c("Gilgit", "Diamer", "Skardu", "Ghanshe", "Astore", "Ghizer", "Hunza-Nagar"))
     
 ```
-Within Gilgit-Baltistan, Hunza is outperforming.
-
+<p>Within Gilgit-Baltistan, Hunza is outperforming.</p>
+```{r, warning=FALSE}
+child %>% 
+  filter(RID == 6) %>% 
+  group_by(DID) %>% 
+  ggplot(aes(DID, C010)) +
+  geom_boxplot(aes(group = DID)) +
+  scale_x_continuous(breaks = 260:266, labels = c("Gilgit", "Diamer", "Skardu", "Ghanshe", "Astore", "Ghizer", "Hunza-Nagar"))
+```
 
 #### Basic Learning Levels: Reading in Local/National Language (C010)
 1 = Begginer/Nothing; 2 = Letters; 3 = Words; 4 = Sentences; 5 = Story
@@ -174,12 +168,78 @@ child %>%
 #### Basic Learning Levels by Age
 ```{r, warning=FALSE, message=FALSE}
 child %>% 
-  filter(DID == 266) %>% 
+  filter(DID == 266, C013 != c(3,4)) %>% 
   ggplot(aes(C010)) +
   geom_histogram() +
   facet_grid(~C001)
+# children at he age of 3 and 4 are removed for they have not data
+```
+
+#### Basic Learning Levels by Gender
+```{r,message=FALSE, warning=FALSE}
+child %>% 
+  filter(DID == 266) %>% 
+  ggplot(aes(C010)) +
+  geom_histogram() +
+  facet_grid(~C002, labeller = labeller(C002 = Gender))
+```
+
+#### English Reading Levels (C013)
+```{r, message=FALSE, warning=FALSE}
+child %>% 
+  filter(DID == 266, C013 != c(3,4)) %>% 
+  ggplot(aes(C013)) +
+  geom_histogram() +
+  facet_grid(~C001)
+# children at he age of 3 and 4 are removed for they have not data
+
+```
+
+#### English Reading Levels by Gender 
+```{r, message=FALSE, warning=FALSE}
+child %>% 
+  filter(DID == 266) %>% 
+  ggplot(aes(C013)) +
+  geom_histogram() +
+  facet_grid(~C002, labeller = labeller(C002 = Gender))
 ```
 
 
 
+### Comparison between Other Region
+#### Current Enrollment Rate
+```{r, message=FALSE}
+child %>% 
+  group_by(DID) %>% 
+  mutate(avg = round(mean(C003 == 3), digits = 2)) %>% 
+  ungroup() %>% 
+  ggplot(aes(avg)) +
+  geom_histogram() +
+  facet_grid(~RID, labeller = labeller(RID = RegionName)) +
+  labs(title = "Current Enrollment Rate by Region")
+```
+
+#### Female Average Learning Levels (Age or other variables are NOT adjusted)
+```{r}
+child %>% 
+  filter(C002 == -1) %>% 
+  group_by(DID) %>% 
+  mutate(avg_learning = mean(C010, na.rm = TRUE)) %>% 
+  ggplot(aes(DID, avg_learning, color = RID)) +
+  geom_point() +
+  geom_text(aes(label = DID), nudge_x = 5, check_overlap = TRUE)
+
+```
+```{r}
+child %>% 
+  filter(C002 == -1) %>% 
+  group_by(DID) %>% 
+  mutate(avg_learning = mean(C010, na.rm = TRUE)) %>% 
+  ggplot(aes(DID, avg_learning, color = RID)) +
+  geom_point() +
+  geom_text(aes(label = DID), nudge_x = 5, check_overlap = TRUE) +
+  gghighlight(RID == 6)
+  
+```
+<p>It is interesting to note that Gilgit-Baltistan(RID==6) has a huge diversity in average learning levels of girls and Hunza(DID==266) is in the top group of all region.</p>
 
