@@ -1,0 +1,43 @@
+Data files are cleaned. Villages in which less than 10 households could be covered due to security, too distant sample points or redundant information are 
+excluded in these data files. These data files have only those children that have completed or on which information of all sections 
+could be possibly collected. Therefore, Results calculated from these final and cleaned data files may not match with those available 
+in Provisional Report of ASER Pakistan 2016 (available online and hard copies).
+
+Data File Information:-
+
+File Name: ITAASER2016VMSURVEY
+Village Map Survey Information. Its variables starts from capital letter'V'. This file has village level meta information.
+
+File Name: ITAASER2016Child
+It has children Level Information. Variables of Children level information starts from capital letter "C". 
+This file also has household and Parent indicators merged from household and parent information.
+
+File Name: ITAASER2016HealthFunctioning
+It has Children Information on Health & Functioning section of Household Sheet.  Variables of on this section starts from capital letter "HF". 
+
+File Name: ITAASER2016Household
+It has Household Level Information. Variables of householdh level information starts from capital letter "H".  
+
+File Name: ITAASER2016Parent 
+It has Parent's Level Information. Variables of parent level information starts from capital letter "PR".  It also include those parents that do not 
+have any child found in household. These are identified as "No Child" entries in column of first variable (PR001)
+
+File Name: ITAASER2016GSchool
+It has Government School Information. Variables of government school level information starts from capital letter "GS".  
+
+File Name: ITAASER2016PSchool
+It has Private School Information.  Variables of private school level information starts from capital letter "PS".   
+
+File Name: ITAASER2016ProvDist
+It has information on District and Provincial Codes
+
+DATA MERGING IDS:-
+
+There are three types of identification through which data files can be mergedamong themselves.
+
+1. Village Map survey ID (VID): It is a unique identification of a surveyed village. It connects village level household indicators with parent. 
+Surveyed schools information can also be merged with children/Parent/Household information on the basis of village map ID (variable VID)
+
+2. Household ID (HH ID): It is a unique identification of households surveyed. It connects Household level indicators with Children Information.
+
+3. Parent ID (PRID): It is a unique identification of  parents found in surveyed households. It connects Parent information with Children Information.
