@@ -29,7 +29,7 @@ school <- read.csv("aser/ASER2016GSchool.csv")
 child <- read.csv("aser/ASER2016Child.csv")
 ```
 ```{r}
-RegionName <- c("2" =  "Panjab", 
+RegionName <- c("2" = "Panjab", 
                 "3" = "Sindh", 
                 "4" = "Balochistan", 
                 "5" = "Khyber Pakhtunkhwa", 
@@ -54,6 +54,14 @@ child %>%
 ```
 <p>The samplesize of Hunza alone is 1641.</p>
 
+
+
+
+
+
+
+
+
 ### Exploration in Hunza
 #### Gender Proportion
 ```{r}
@@ -63,6 +71,15 @@ child %>%
 ```
 <p>-1: female, 0: male<br>
 gender_proportion = -0.5173675 means there are a little more girls in the dataset.</p>
+
+#### Age of Children (C001)
+```{r, message=FALSE}
+child %>% 
+  filter(DID == 266) %>% 
+  ggplot(aes(C001)) +
+  geom_histogram()
+```
+Age is well sparsed
 
 #### Eduation Status
 
@@ -85,7 +102,7 @@ child %>%
 Both genders look pretty good interms of the absolute number of currently-enrolled-children 
 
 #### The Enrollment Rate by Gender
-```{r}
+```{r, message=FALSE}
 child %>% 
   filter(DID == 266) %>% 
   group_by(C002) %>% 
@@ -99,8 +116,21 @@ child %>%
 ```
 As a rate, both are doing pretty good
 
+#### Currently-Enrolled: Institution Type (C006)
+1 = Government; 2 = Private; 3 = Madrasah(Conventional religious education) School; 4 = Other(Non formal education facility)
+```{r, warning=FALSE, message=FALSE}
+child %>% 
+  filter(DID == 266) %>% 
+  ggplot(aes(C006)) +
+  geom_histogram()
+```
+
+Most children go to public schools or private schools
+
+
+
 #### Comparison between Other Region
-```{r}
+```{r, message=FALSE}
 child %>% 
   group_by(DID) %>% 
   mutate(avg = round(mean(C003 == 3), digits = 2)) %>% 
@@ -124,4 +154,32 @@ child %>%
     
 ```
 Within Gilgit-Baltistan, Hunza is outperforming.
+
+
+#### Basic Learning Levels: Reading in Local/National Language (C010)
+1 = Begginer/Nothing; 2 = Letters; 3 = Words; 4 = Sentences; 5 = Story
+```{r, warning=FALSE, message=FALSE}
+child %>% 
+  filter(DID == 266) %>% 
+  ggplot(aes(C010)) +
+  geom_histogram()
+```
+
+```{r}
+child %>% 
+  filter(DID == 266) %>% 
+  summarize(na = sum(is.na(C010)))
+```
+
+#### Basic Learning Levels by Age
+```{r, warning=FALSE, message=FALSE}
+child %>% 
+  filter(DID == 266) %>% 
+  ggplot(aes(C010)) +
+  geom_histogram() +
+  facet_grid(~C001)
+```
+
+
+
 

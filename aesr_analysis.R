@@ -4,7 +4,7 @@ school <- read.csv("aser/ASER2016GSchool.csv")
 head(school)
 child <- read.csv("aser/ASER2016Child.csv")
 
-RegionName <- c("2" =  "Panjab", 
+RegionName <- c("2" = "Panjab", 
                 "3" = "Sindh", 
                 "4" = "Balochistan", 
                 "5" = "Khyber Pakhtunkhwa", 
