@@ -19,10 +19,35 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ### Preparation
 #### Packages Used
-```{r, message=FALSE}
-library(tidyverse)
+```{r libraries, message=FALSE}
 library(ggplot2)
 library(gghighlight)
+library(stringr)
+library(jsonlite)
+library(leaflet)
+library(ggmap)
+library(devtools)
+library(dplyr)
+library(dbplyr)
+library(sqldf)
+library(RMySQL)
+library(cartography)
+library(sf)
+library(tmap)
+library(raster)
+library(spData)
+library(maps)
+library(mapdata)
+library(maptools)
+library(ggthemes)
+# install.packages("choroplethrZip")
+library(choroplethr)
+library(choroplethrAdmin1)
+library(choroplethrMaps)
+library(tidyverse)
+# library(choroplethrZip)
+# library(spDataLarge)
+# install.packages("spDataLarge") not available
 ```
 #### Data Installation
 ```{r}
@@ -242,4 +267,93 @@ child %>%
   
 ```
 <p>It is interesting to note that Gilgit-Baltistan(RID==6) has a huge diversity in average learning levels of girls and Hunza(DID==266) is in the top group of all region.</p>
+
+
+```{r, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
+  
+map <- read.csv("map/csvData.csv")
+map$location <- str_remove(map$location, "https://www.google.com/maps/")
+map$location <- str_remove(map$location, "^\\D")
+map$location <- str_remove(map$location, "q=")
+map
+
+provDist <- read.csv("aser/ASER2016ProvDist.csv")
+
+head(provDist)
+
+child <- child %>% right_join(provDist[-1], by = "DID")
+
+map$location <- str_split(map$location, pattern = ",")
+col_names <- c("long", "lat")
+a <- t(as.data.frame(map$location))
+colnames(a) <- col_names
+class(a)
+lat <- a[,1]
+long <- a[,2]
+long <- as.vector(long)
+long <- as.numeric(long)
+lat <- as.vector(lat)
+lat <- as.numeric(lat)
+
+map <- map %>% 
+  mutate(long = long, lat = lat)
+map <- map[-3]
+
+# height <- max(map$lat) - min(map$lat)
+# width <- max(map$long) - min(map$long)
+# pak_borders <- c(bottom  = min(map$lat)  - 0.1 * height, 
+#                  top     = max(map$lat)  + 0.1 * height,
+#                  left    = min(map$long) - 0.1 * width,
+#                  right   = max(map$long) + 0.1 * width)
+# 
+# map_a <- get_stamenmap(pak_borders, zoom = 10, maptype = "toner-lite")
+# 
+# ggmap(map_a)
+
+
+```
+
+```{r,include=FALSE, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
+data("admin1.map")
+pak <- subset(admin1.map, admin == "pakistan")
+region <- pak$region
+
+
+pak %>% group_by(region) %>% 
+  mutate(long_region = mean(long), lat_region = mean(lat)) %>% 
+  ggplot() +
+    geom_polygon(aes(long, lat, group = group),
+                 fill = "white", color = "black") +
+    theme_map() +
+    geom_text(aes(long_region, lat_region, label = region))
+
+```
+
+
+```{r ,include=FALSE, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
+pak %>% group_by(region) %>% 
+  mutate(long_region = mean(long), lat_region = mean(lat)) %>% 
+  ggplot() +
+    geom_polygon(aes(long, lat, group = group),
+                 fill = "white", color = "black") +
+    theme_map() +
+    geom_text(aes(long_region, lat_region, label = region))
+```
+
+
+#### Pakistan Map
+```{r map, error=FALSE, warning=FALSE}
+data("admin1.map")
+pak <- subset(admin1.map, admin == "pakistan")
+region <- pak$region
+ggplot() +
+  geom_polygon(data = pak, aes(long, lat, group = group),
+               fill = "white", color = "black") +
+  geom_point(data = map, aes(long, lat, label = name)) +
+  geom_text(data = map, aes(long, lat, label = name), check_overlap = TRUE, nudge_y = 1)
+
+
+```
+
+
 
