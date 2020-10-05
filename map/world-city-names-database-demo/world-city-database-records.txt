@@ -1,0 +1,17 @@
+Africa - 430,495
+Antarctic Region - 3
+Arctic Region - 1,198
+Asia - 593,023
+Central America and the Caribbean - 75,035
+Commonwealth of Independent States - 110,265
+Europe - 617,889
+Middle East - 248,617
+North America - 209,669
+Oceania - 37,457
+South America - 149,271
+South East Asia - 322,970
+World Others - 1,353
+
+TOTAL - 2,797,245
+
+# Data in this file is for demonstration only. Complete database is available in the full package

@@ -1,5 +1,8 @@
 library(tidyverse)
 library(ggplot2)
+library(stringr)
+library(jsonlite)
+
 school <- read.csv("aser/ASER2016GSchool.csv")
 head(school)
 child <- read.csv("aser/ASER2016Child.csv")
@@ -73,5 +76,51 @@ child %>%
   ggplot(aes(DID, Current_Enrollment_Rate)) +
   geom_count() +
   scale_x_continuous(breaks = 260:266, labels = c("Gilgit", "Diamer", "Skardu", "Ghanshe", "Astore", "Ghizer", "Hunza-Nagar"))
-    
+
+# Importing map information
   
+# Importing map information
+
+map <- read.csv("map/csvData.csv")
+map$location <- str_remove(map$location, "https://www.google.com/maps/")
+map$location <- str_remove(map$location, "^\\D")
+map$location <- str_remove(map$location, "q=")
+map
+
+provDist <- read.csv("aser/ASER2016ProvDist.csv")
+
+head(provDist)
+
+child <- child %>% right_join(provDist[-1], by = "DID")
+
+map$location <- str_split(map$location, pattern = ",")
+col_names <- c("long", "lat")
+a <- t(as.data.frame(map$location))
+colnames(a) <- col_names
+class(a)
+lat <- a[,1]
+long <- a[,2]
+long <- as.vector(long)
+
+long <- as.numeric(long)
+lat <- as.vector(lat)
+lat <- as.numeric(lat)
+map <- map %>% 
+  mutate(long = long, lat = lat) %>% 
+  select(-location)
+
+map
+
+height <- max(map$lat) - min(map$lat)
+width <- max(map$long) - min(map$long)
+pak_borders <- c(bottom  = min(map$lat)  - 0.1 * height, 
+                 top     = max(map$lat)  + 0.1 * height,
+                 left    = min(map$long) - 0.1 * width,
+                 right   = max(map$long) + 0.1 * width)
+
+sum(map$name == child$DNAME)
+length(map$name)
+length(child$DNAME)
+# map_a <- get_stamenmap(pak_borders, zoom = 10, maptype = "toner-lite")
+
+# ggmap(map_a)
