@@ -2,8 +2,12 @@ library(tidyverse)
 library(ggplot2)
 library(stringr)
 library(jsonlite)
-
+read.csv("aser/ASER2016GSchool.csv")
 school <- read.csv("aser/ASER2016GSchool.csv")
+
+read.csv()
+
+
 head(school)
 child <- read.csv("aser/ASER2016Child.csv")
 
