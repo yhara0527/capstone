@@ -1,0 +1,1 @@
+https://geonode.wfp.org/geoserver/wfs?format_options=charset:UTF-8&typename=geonode:pak_ica_categories_areas_geonode_apr2017&outputFormat=SHAPE-ZIP&version=1.0.0&service=WFS&request=GetFeature

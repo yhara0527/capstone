@@ -20,37 +20,31 @@ knitr::opts_chunk$set(echo = TRUE)
 ### Preparation
 #### Packages Used
 ```{r libraries, message=FALSE}
+library(tidyverse)
 library(ggplot2)
 library(gghighlight)
 library(stringr)
-library(jsonlite)
-library(leaflet)
 library(ggmap)
-library(devtools)
 library(dplyr)
-library(dbplyr)
-library(sqldf)
-library(RMySQL)
 library(cartography)
 library(sf)
 library(tmap)
-library(raster)
 library(spData)
 library(maps)
 library(mapdata)
 library(maptools)
 library(ggthemes)
-# install.packages("choroplethrZip")
 library(choroplethr)
 library(choroplethrAdmin1)
 library(choroplethrMaps)
-library(tidyverse)
+library(rgdal)
 # library(choroplethrZip)
 # library(spDataLarge)
 # install.packages("spDataLarge") not available
 ```
 #### Data Installation
 ```{r}
+read.csv("aser/ASER2016GSchool.csv")
 school <- read.csv("aser/ASER2016GSchool.csv")
 child <- read.csv("aser/ASER2016Child.csv")
 ```
@@ -337,23 +331,250 @@ pak %>% group_by(region) %>%
     geom_polygon(aes(long, lat, group = group),
                  fill = "white", color = "black") +
     theme_map() +
-    geom_text(aes(long_region, lat_region, label = region))
+    geom_text(aes(long_region, lat_region, label = region)) +
+  coord_fixed()
 ```
 
-
+### Spatial Analysis
 #### Pakistan Map
 ```{r map, error=FALSE, warning=FALSE}
 data("admin1.map")
 pak <- subset(admin1.map, admin == "pakistan")
 region <- pak$region
+
 ggplot() +
   geom_polygon(data = pak, aes(long, lat, group = group),
                fill = "white", color = "black") +
   geom_point(data = map, aes(long, lat, label = name)) +
-  geom_text(data = map, aes(long, lat, label = name), check_overlap = TRUE, nudge_y = 1)
+  geom_text(data = map, aes(long, lat, label = name), check_overlap = TRUE, nudge_y = 1) +
+  coord_fixed()
 
 
 ```
 
+```{r,include=FALSE, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
+map_child <- map %>% left_join(child, by = c("name" = "DNAME"))
+
+ggplot() +
+  geom_polygon(data = pak, aes(long, lat, group = group),
+               fill = "white", color = "black") +
+  geom_point(data = map_child, aes(long, lat, label = name, color = RNAME)) +
+  geom_text(data = map_child, aes(long, lat, label = name), check_overlap = TRUE, nudge_y = 1)
+
+
+map_child
+map
+child
+```
+
+
+```{r,include=FALSE, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
+ggplot() +
+  geom_polygon(data = pak, aes(long, lat, group = group),
+               fill = "white", color = "black") +
+  geom_point(data = map_child, aes(long, lat, label = name)) +
+  geom_text(data = map_child, aes(long, lat, label = name), check_overlap = TRUE, nudge_y = 1) +
+  coord_fixed()
+
+```
+
+#### Districts Map
+```{r,include=FALSE, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
+ica <- sf::st_read("map/pak_ica_categories_areas_geonode_apr2017.shp")
+
+ggplot(ica) +
+  geom_sf() +
+  geom_point(data = map_child, aes(long, lat, label = DID)) +
+  geom_text(data = map_child, aes(long, lat, label = DID), check_overlap = TRUE)
+
+ica %>% 
+  mutate(
+    centroid = st_centroid(geometry),
+    x = st_coordinates(centroid)[,1],
+    y = st_coordinates(centroid)[,2]) %>% 
+    ggplot() +
+  geom_sf() +
+  geom_point(aes(x, y))
+```
+```{r,include=FALSE, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
+ica %>% 
+  mutate(centroid = st_centroid(geometry),
+    x = st_coordinates(centroid)[,1],
+    y = st_coordinates(centroid)[,2]) %>% 
+    ggplot() +
+  geom_sf() +
+  geom_point(aes(x, y)) +
+  geom_text(aes(x, y, label = Districts),size = 2, check_overlap = TRUE, nudge_y = 1)
+```
+
+
+```{r,include=FALSE, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
+ica_df <- ica %>% 
+  mutate(centroid = st_centroid(geometry),
+    x = st_coordinates(centroid)[,1],
+    y = st_coordinates(centroid)[,2]) %>% 
+  as.data.frame()
+ica_df
+ica_df <- ica_df %>% select(Province, Districts, x, y)
+ica_df <- ica_df %>% summarize(Province = tolower(Province), Districts = tolower(Districts), x = x, y = y)
+
+
+```
+
+
+```{r ica_df_2,include=FALSE, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
+ica_df_2 <- ica_df %>% filter(Province == "punjab")
+ica_df_2$Districts <- ica_df_2$Districts %>%  
+  str_replace("bahawalnagar", "bahawalnager") %>%
+  str_replace("jhelum", "Jehlum") %>% 
+  str_replace("leiah", "layyah") %>% 
+  str_replace("mandi bahauddin", "mandi bahuddin") %>% 
+  as.vector()
+
+child_dname <- child %>% mutate(dname = tolower(DNAME))
+
+child_dname_2 <- child_dname %>% filter(RNAME == "Punjab") %>% left_join(ica_df_2, by = c("dname" = "Districts"))
+
+
+```
+```{r ica_df_3, include=FALSE, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
+ica_df_3 <- ica_df %>% filter(Province == "sindh")
+
+ica_df_3$Districts <- ica_df_3$Districts %>%  
+  str_replace("ghotki", "gotki") %>%
+  str_replace("mirpur khas", "mirpurkhas") %>% 
+  str_replace("malir karachi", "karachi-malir-rural") %>% 
+  str_replace("naushahro feroze", "nowshero feroze") %>% 
+  str_replace("kambar shahdad kot", "qambar shahdadkot") %>% 
+  str_replace("sujawal", "sajawal") %>% 
+  str_replace("shaheed benazir abad", "shaheed benazirabad") %>% 
+  str_replace("tando allahyar", "tando allah yar") %>% 
+  as.vector()
+
+child_dname_3 <- child_dname %>% filter(RNAME == "Sindh") %>% left_join(ica_df_3, by = c("dname" = "Districts"))
+```
+```{r ica_df_4,include=FALSE, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
+ica_df_4 <- ica_df %>% filter(Province == "balochistan")
+
+ica_df_4$Districts <- ica_df_4$Districts %>%  
+  str_replace("chagai", "chaghi") %>%
+  str_replace("jaffarabad", "jafarabad") %>% 
+  str_replace("kalat", "kallat") %>% 
+  str_replace("kech", "kech (turbat)") %>% 
+  str_replace("killa abdullah", "qilla abdullah") %>% 
+  str_replace("killa saifullah", "qilla saifullah") %>% 
+  as.vector()
+
+child_dname_4 <- child_dname %>% filter(RNAME == "Balochistan") %>% left_join(ica_df_4, by = c("dname" = "Districts"))
+
+```
+```{r ica_df_5,include=FALSE, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
+ica_df_5 <- ica_df %>% filter(Province == "khyber pakhtunkhwa")
+ica_df_5
+
+ica_df_5$Districts <- ica_df_5$Districts %>%  
+  str_replace("batagram", "battagram") %>%
+  str_replace("d. i. khan", "dera ismail khan") %>% 
+  str_replace("malakand p area", "malakand") %>% 
+  as.vector()
+
+child_dname_5 <- child_dname %>% filter(RNAME == "Khyber Pakhtunkhwa") %>% left_join(ica_df_5, by = c("dname" = "Districts"))
+
+```
+```{r ica_df_6,include=FALSE, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
+ica_df_6 <- ica_df %>% filter(Province == "gilgit baltistan")
+
+ica_df_6$Districts <- ica_df_6$Districts %>%  
+  str_replace("diamir", "diamer") %>%
+  str_replace("hunza", "hunza-nagar") %>% 
+  as.vector()
+
+child_dname_6 <- child_dname %>% filter(RNAME == "Gilgit-Baltistan") %>% left_join(ica_df_6, by = c("dname" = "Districts"))
+
+```
+```{r ica_df_7,include=FALSE, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
+ica_df_7 <- ica_df %>% filter(Province == "azad kashmir")
+
+ica_df_7$Districts <- ica_df_7$Districts %>%  
+  str_replace("hattian bala", "hattian") %>%
+  str_replace("haveli\\(kahuta\\)", "haveli") %>% 
+  str_replace("sudhnoti", "sudhnati") %>% 
+  as.vector()
+
+child_dname_7 <- child_dname %>% filter(RNAME == "Azad Jammu and Kashmir") %>% left_join(ica_df_7, by = c("dname" = "Districts"))
+
+```
+```{r ica_df_8,include=FALSE, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
+ica_df_8 <- ica_df %>% filter(Province == "islamabad")
+child_dname_8 <- child_dname %>% filter(RNAME == "Islamabad - ICT") %>% left_join(ica_df_8, by = c("dname" = "Districts"))
+
+```
+```{r ica_df_9,include=FALSE, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
+ica_df_9 <- ica_df %>% filter(Province == "fata")
+
+ica_df_9$Districts <- ica_df_9$Districts %>%  
+  str_replace("fr bannu", "f.r. - bannu") %>%
+  str_replace("fr d.i.khan", "f.r. - d.i. khan") %>% 
+  str_replace("fr kohat", "f.r. - kohat") %>% 
+  str_replace("fr lakki marwat", "f.r. - lakki marwat") %>% 
+  str_replace("fr peshawar", "f.r. - peshawar") %>% 
+  str_replace("fr tank", "f.r. - tank") %>% 
+  as.vector()
+
+child_dname_9 <- child_dname %>% filter(RNAME == "Federally Administrated Tribal Areas") %>% left_join(ica_df_9, by = c("dname" = "Districts"))
+```
+
+```{r ica_df whose Districts names are renamed,include=FALSE, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
+ica_df
+rbind(ica_df_2, ica_df_3, ica_df_4,
+      ica_df_5, ica_df_6, ica_df_7,
+      ica_df_8, ica_df_9)
+```
+
+```{r data child which as location,include=FALSE, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
+child_ica <- rbind(child_dname_2, child_dname_3, child_dname_4,
+      child_dname_5, child_dname_6, child_dname_7,
+      child_dname_8, child_dname_9)
+```
+
+
+```{r C003}
+ica %>% 
+  mutate(centroid = st_centroid(geometry),
+    x = st_coordinates(centroid)[,1],
+    y = st_coordinates(centroid)[,2]) %>% 
+    ggplot() +
+  geom_sf() +
+  geom_point(data = child_ica, aes(x, y, label = C003, color = C003)) +
+  geom_text(data = child_ica, aes(x, y, label = C003), check_overlap = TRUE, nudge_y = 1)
+```
+
+```{r C010}
+ica %>% 
+  mutate(centroid = st_centroid(geometry),
+    x = st_coordinates(centroid)[,1],
+    y = st_coordinates(centroid)[,2]) %>% 
+    ggplot() +
+  geom_sf() +
+  geom_point(data = child_ica, aes(x, y, label = C010, color = C010))
+  # geom_text(data = child_ica, aes(x, y, label = C010), check_overlap = TRUE, nudge_y = 1)
+```
+
+#### Traial: children, gender
+```{r gender_ratio}
+child_ica %>% group_by(DID) %>% 
+  mutate(gender_ratio = mean(C002))
+
+
+ica %>% 
+  mutate(centroid = st_centroid(geometry),
+    x = st_coordinates(centroid)[,1],
+    y = st_coordinates(centroid)[,2]) %>% 
+    ggplot() +
+  geom_sf() +
+  geom_point(data = child_ica %>% group_by(DID) %>% 
+  mutate(gender_ratio = mean(C002)), aes(x, y, label = gender_ratio, color = gender_ratio))
+```
+<p>0: male, -1: female</p>
 
 
