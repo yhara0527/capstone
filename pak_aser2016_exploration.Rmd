@@ -22,6 +22,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r libraries, message=FALSE}
 library(tidyverse)
 library(ggplot2)
+library(ggthemes)
+library(ggrepel)
 library(gghighlight)
 library(stringr)
 library(ggmap)
@@ -33,11 +35,11 @@ library(spData)
 library(maps)
 library(mapdata)
 library(maptools)
-library(ggthemes)
 library(choroplethr)
 library(choroplethrAdmin1)
 library(choroplethrMaps)
 library(rgdal)
+library(tidycensus)
 # library(choroplethrZip)
 # library(spDataLarge)
 # install.packages("spDataLarge") not available
@@ -222,6 +224,45 @@ child %>%
   geom_histogram() +
   facet_grid(~C002, labeller = labeller(C002 = Gender))
 ```
+
+```{r}
+child %>% 
+  filter(DID == 266) %>% 
+  group_by(C002) %>% 
+  summarize(enrollment_rate = mean(C003 == 3, na.rm = TRUE))
+
+child %>% 
+  group_by(DID, C002) %>% 
+  summarize(enrollment_rate = mean(C003 == 3, na.rm = TRUE)) %>% 
+  ggplot(aes(DID, enrollment_rate, color = factor(DID), label = C002)) +
+  geom_point(show.legend = FALSE) +
+  geom_text(aes(label = C002), show.legend = FALSE, nudge_y = 0.05) 
+  
+```
+
+
+```{r}
+child %>%
+  filter(C002 == c(0, -1)) %>%
+  group_by(DID, C002) %>%
+  mutate(enrollment_rate = mean(C003 == 3, na.rm = TRUE)) %>%
+  ggplot(aes(DID, enrollment_rate, color = C002, label = DID)) +
+  geom_text(aes(label = DID), size = 2.5) +
+  facet_grid(.~RID) +
+  facet_wrap(.~RID)
+```
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -560,7 +601,7 @@ child_ica <- rbind(child_dname_2, child_dname_3, child_dname_4,
       child_dname_8, child_dname_9)
 ```
 
-```{r}
+```{r, message=FALSE, warning=FALSE, error=FALSE, comment=FALSE}
 ica %>% 
   mutate(centroid = st_centroid(geometry),
     x = st_coordinates(centroid)[,1],
@@ -571,7 +612,7 @@ ica %>%
   geom_text(data = child_ica, aes(x, y, label = C003), check_overlap = TRUE, nudge_y = 1)
 ```
 
-```{r}
+```{r, warning=FALSE, error=FALSE, comment=FALSE}
 ica %>% 
   mutate(centroid = st_centroid(geometry),
     x = st_coordinates(centroid)[,1],
@@ -583,7 +624,7 @@ ica %>%
 ```
 
 #### Traial: children, gender
-```{r}
+```{r, warning=FALSE, error=FALSE, comment=FALSE}
 ica %>% 
   mutate(centroid = st_centroid(geometry),
     x = st_coordinates(centroid)[,1],
@@ -595,7 +636,7 @@ ica %>%
 ```
 <div><p>0: male, -1: female</p></div><p>Thus, -0.5 indicates the complete gender parity</p>
 
-```{r}
+```{r, warning=FALSE, error=FALSE, comment=FALSE}
 ica %>% 
   mutate(centroid = st_centroid(geometry),
     x = st_coordinates(centroid)[,1],
@@ -606,7 +647,7 @@ ica %>%
   mutate(gender_ratio = mean(C002, na.rm = TRUE)), aes(x, y, label = gender_ratio, color = gender_ratio, size = -gender_ratio))
 ```
 
-```{r}
+```{r, warning=FALSE, error=FALSE, comment=FALSE}
 ica %>% 
   mutate(centroid = st_centroid(geometry),
     x = st_coordinates(centroid)[,1],
@@ -618,7 +659,7 @@ ica %>%
 
 ```
 
-```{r}
+```{r, warning=FALSE, error=FALSE, comment=FALSE}
 ica %>% 
   mutate(centroid = st_centroid(geometry),
     x = st_coordinates(centroid)[,1],
@@ -629,4 +670,69 @@ ica %>%
                        mutate(gender_ratio = mean(C002, na.rm = TRUE), avg_learning_level = mean(C010, na.rm = TRUE))), aes(x, y, label = gender_ratio, color = gender_ratio, size = avg_learning_level)) +
   theme(axis.title = element_text())
 ```
+
+#### Average Local/National Language Level Across Ages by Rgion
+```{r, warning=FALSE, error=FALSE, comment=FALSE}
+child_ica %>% 
+  filter(C002 == c(0,-1)) %>% 
+  group_by(DID, C001, C002) %>% 
+  mutate(avg_local = mean(C010, na.rm = TRUE)) %>% 
+  ggplot(aes(C001, avg_local, color = factor(C002), group = DID)) +
+  geom_line(show.legend = FALSE) +
+  labs(x = "Age") +
+  facet_grid(RID~C002, labeller = labeller(RID = RegionName, C002 = Gender)) +
+  facet_wrap(RID~C002, labeller = labeller(RID = RegionName, C002 = Gender))
+
+```
+
+
+#### Average Enrollment Rate Across Ages by Rgion
+```{r, warning=FALSE, error=FALSE, comment=FALSE}
+child_ica %>% 
+  filter(C002 == c(0,-1)) %>% 
+  group_by(DID, C001, C002) %>% 
+  mutate(avg_enrollment = mean(C003 == 3, na.rm = TRUE)) %>% 
+  ggplot(aes(C001, avg_enrollment, color = factor(DID), group = DID)) +
+  geom_line(show.legend = FALSE) +
+  labs(x = "Age") +
+  facet_grid(RID~C002, labeller = labeller(RID = RegionName, C002 = Gender)) +
+  facet_wrap(RID~C002, labeller = labeller(RID = RegionName, C002 = Gender))
+
+
+```
+
+#### Hunza
+```{r, warning=FALSE, error=FALSE, comment=FALSE}
+child_ica %>% 
+  filter(C002 == c(0,-1), RID == 6) %>% 
+  group_by(DID, C001, C002) %>% 
+  mutate(avg_enrollment = mean(C003 == 3, na.rm = TRUE)) %>% 
+  ggplot(aes(C001, avg_enrollment, color = factor(DID), group = DID)) +
+  geom_line() +
+  labs(x = "Age") +
+  facet_grid(RID~C002, labeller = labeller(RID = RegionName, C002 = Gender)) +
+  facet_wrap(RID~C002, labeller = labeller(RID = RegionName, C002 = Gender)) +
+  gghighlight(DID == 266,label_key = DNAME)
+```
+
+
+#### Karachi 
+```{r, warning=FALSE, error=FALSE, comment=FALSE}
+
+child_ica %>% 
+  filter(C002 == c(0,-1), RID == 3) %>% 
+  group_by(DID, C001, C002) %>% 
+  mutate(avg_enrollment = mean(C003 == 3, na.rm = TRUE)) %>% 
+  ggplot(aes(C001, avg_enrollment, color = factor(DID), group = DID)) +
+  geom_line() +
+  labs(x = "Age") +
+  facet_grid(RID~C002, labeller = labeller(RID = RegionName, C002 = Gender)) +
+  facet_wrap(RID~C002, labeller = labeller(RID = RegionName, C002 = Gender)) +
+  gghighlight(DID == c(315,316), label_key = DNAME)
+```
+
+
+
+
+
 
