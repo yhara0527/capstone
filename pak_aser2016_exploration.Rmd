@@ -1257,14 +1257,14 @@ dist_logist <- sapply(id, function(dist){
   glm_child_dist <- glm(C003_01 ~ C002_01, family = "binomial", data = child_ica_dummy %>% filter(DID == dist))
   glm_child_dist_null <- glm(C003_01~1, family = "binomial", data = child_ica_dummy %>% filter(DID == dist))
 anova <- anova(glm_child_dist_null, glm_child_dist, test = "Chisq")
-data.frame(DID = dist, chi = anova$`Pr(>Chi)`[2], chi_largerThan_0.1 = anova$`Pr(>Chi)`[2] >= 0.1)
+data.frame(DID = dist, chi = anova$`Pr(>Chi)`[2], chi_largerThan_0.05 = anova$`Pr(>Chi)`[2] >= 0.05, chi_largerThan_0.1 = anova$`Pr(>Chi)`[2] >= 0.1)
 })
 
 anova_dist <- as.data.frame(as.tibble(t(dist_logist)))
 anova_dist$DID <- as.numeric(anova_dist$DID)
 anova_dist$chi <- as.numeric(anova_dist$chi)
 anova_dist$chi_largerThan_0.1 <- as.logical(anova_dist$chi_largerThan_0.1)
-anova_dist
+anova_dist$chi_largerThan_0.05 <- as.logical(anova_dist$chi_largerThan_0.05)
 ```
 
 ```{r}
@@ -1273,13 +1273,24 @@ anova_dist %>%
             ratio = sum(as.numeric(chi_largerThan_0.1))/length(chi_largerThan_0.1))
 ```
 
-#### DIDs with chi >= 0.5
+```{r}
+anova_dist %>% 
+  summarize(total_chi_largerThan_0.05 = sum(as.numeric(chi_largerThan_0.05)),
+            ratio = sum(as.numeric(chi_largerThan_0.05))/length(chi_largerThan_0.05))
+```
+
+
+#### DIDs with chi >= 0.1
 
 ```{r}
 anova_dist %>% 
   filter(chi_largerThan_0.1 == TRUE)
 ```
 
+```{r}
+anova_dist %>% 
+  filter(chi_largerThan_0.05 == TRUE)
+```
 
 ```{r}
 glm_child_265 <- glm(C003_01 ~ C001 + C002_01 + PR004_01, family = "binomial", data = child_ica_dummy %>% filter(DID == 265))
@@ -1385,6 +1396,7 @@ step(glm_child_null, direction = "both",
 
 ```{r}
 vif(glm_child)
+
 ```
 
 
