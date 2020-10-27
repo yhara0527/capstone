@@ -26,29 +26,25 @@ library(ggthemes)
 library(ggrepel)
 library(gghighlight)
 library(stringr)
-library(ggmap)
 library(dplyr)
-library(cartography)
 library(sf)
-library(tmap)
-library(spData)
-library(maps)
-library(mapdata)
-library(maptools)
-library(choroplethr)
-library(choroplethrAdmin1)
-library(choroplethrMaps)
-library(rgdal)
-library(tidycensus)
-# library(choroplethrZip)
-# library(spDataLarge)
-# install.packages("spDataLarge") not available
+library(scatterplot3d)
+library(car)
+# library(broom)
+require(ggiraph)
+require(ggiraphExtra)
+
+# require(plyr)
 ```
 #### Data Installation
 ```{r}
-read.csv("aser/ASER2016GSchool.csv")
+provdist <- read.csv("aser/ASER2016ProvDist.csv")
 school <- read.csv("aser/ASER2016GSchool.csv")
 child <- read.csv("aser/ASER2016Child.csv")
+pschool <- read.csv("aser/ASER2016PvtSchool.csv")
+gschool <- read.csv("aser/ASER2016GSchool.csv")
+parent <- read.csv("aser/ASER2016Parent.csv")
+house <- read.csv("aser/ASER2016HouseholdIndicators.csv")
 ```
 ```{r}
 RegionName <- c("2" = "Panjab", 
@@ -62,6 +58,7 @@ RegionName <- c("2" = "Panjab",
 Gender <- c("0" = "Male",
             "-1" = "Female")
 ```
+
 
 ### Exploration
 #### Checking Samplesizes
@@ -128,8 +125,7 @@ child %>%
 child %>% 
   filter(DID == 266) %>% 
   group_by(C002) %>% 
-  summarize(enrollment_rate = mean(C003 == 3)) %>% 
-  ungroup() %>% 
+  mutate(enrollment_rate = mean(C003 == 3)) %>% 
   ggplot(aes(C002, enrollment_rate)) +
   geom_col() +
   scale_y_continuous() +
@@ -233,7 +229,7 @@ child %>%
 
 child %>% 
   group_by(DID, C002) %>% 
-  summarize(enrollment_rate = mean(C003 == 3, na.rm = TRUE)) %>% 
+  mutate(enrollment_rate = mean(C003 == 3, na.rm = TRUE)) %>% 
   ggplot(aes(DID, enrollment_rate, color = factor(DID), label = C002)) +
   geom_point(show.legend = FALSE) +
   geom_text(aes(label = C002), show.legend = FALSE, nudge_y = 0.05) 
@@ -251,6 +247,7 @@ child %>%
   facet_grid(.~RID) +
   facet_wrap(.~RID)
 ```
+
 
 
 
@@ -304,128 +301,10 @@ child %>%
 <p>It is interesting to note that Gilgit-Baltistan(RID==6) has a huge diversity in average learning levels of girls and Hunza(DID==266) is in the top group of all region.</p>
 
 
-```{r, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
-  
-map <- read.csv("map/csvData.csv")
-map$location <- str_remove(map$location, "https://www.google.com/maps/")
-map$location <- str_remove(map$location, "^\\D")
-map$location <- str_remove(map$location, "q=")
-map
-
-provDist <- read.csv("aser/ASER2016ProvDist.csv")
-
-head(provDist)
-
-child <- child %>% right_join(provDist[-1], by = "DID")
-
-map$location <- str_split(map$location, pattern = ",")
-col_names <- c("long", "lat")
-a <- t(as.data.frame(map$location))
-colnames(a) <- col_names
-class(a)
-lat <- a[,1]
-long <- a[,2]
-long <- as.vector(long)
-long <- as.numeric(long)
-lat <- as.vector(lat)
-lat <- as.numeric(lat)
-
-map <- map %>% 
-  mutate(long = long, lat = lat)
-map <- map[-3]
-
-# height <- max(map$lat) - min(map$lat)
-# width <- max(map$long) - min(map$long)
-# pak_borders <- c(bottom  = min(map$lat)  - 0.1 * height, 
-#                  top     = max(map$lat)  + 0.1 * height,
-#                  left    = min(map$long) - 0.1 * width,
-#                  right   = max(map$long) + 0.1 * width)
-# 
-# map_a <- get_stamenmap(pak_borders, zoom = 10, maptype = "toner-lite")
-# 
-# ggmap(map_a)
-
-
-```
-
-```{r,include=FALSE, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
-data("admin1.map")
-pak <- subset(admin1.map, admin == "pakistan")
-region <- pak$region
-
-
-pak %>% group_by(region) %>% 
-  mutate(long_region = mean(long), lat_region = mean(lat)) %>% 
-  ggplot() +
-    geom_polygon(aes(long, lat, group = group),
-                 fill = "white", color = "black") +
-    theme_map() +
-    geom_text(aes(long_region, lat_region, label = region))
-
-```
-
-
-```{r ,include=FALSE, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
-pak %>% group_by(region) %>% 
-  mutate(long_region = mean(long), lat_region = mean(lat)) %>% 
-  ggplot() +
-    geom_polygon(aes(long, lat, group = group),
-                 fill = "white", color = "black") +
-    theme_map() +
-    geom_text(aes(long_region, lat_region, label = region)) +
-  coord_fixed()
-```
-
 ### Spatial Analysis
-#### Pakistan Map
-```{r map, error=FALSE, warning=FALSE}
-data("admin1.map")
-pak <- subset(admin1.map, admin == "pakistan")
-region <- pak$region
-
-ggplot() +
-  geom_polygon(data = pak, aes(long, lat, group = group),
-               fill = "white", color = "black") +
-  geom_point(data = map, aes(long, lat, label = name)) +
-  geom_text(data = map, aes(long, lat, label = name), check_overlap = TRUE, nudge_y = 1) +
-  coord_fixed()
-
-```
-
-```{r,include=FALSE, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
-map_child <- map %>% left_join(child, by = c("name" = "DNAME"))
-
-ggplot() +
-  geom_polygon(data = pak, aes(long, lat, group = group),
-               fill = "white", color = "black") +
-  geom_point(data = map_child, aes(long, lat, label = name, color = RNAME)) +
-  geom_text(data = map_child, aes(long, lat, label = name), check_overlap = TRUE, nudge_y = 1)
-
-
-map_child
-map
-child
-```
-
-
-```{r,include=FALSE, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
-ggplot() +
-  geom_polygon(data = pak, aes(long, lat, group = group),
-               fill = "white", color = "black") +
-  geom_point(data = map_child, aes(long, lat, label = name)) +
-  geom_text(data = map_child, aes(long, lat, label = name), check_overlap = TRUE, nudge_y = 1) +
-  coord_fixed()
-
-```
-
 #### Districts Map
 ```{r,include=FALSE, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
 ica <- sf::st_read("map/pak_ica_categories_areas_geonode_apr2017.shp")
-
-ggplot(ica) +
-  geom_sf() +
-  geom_point(data = map_child, aes(long, lat, label = DID)) +
-  geom_text(data = map_child, aes(long, lat, label = DID), check_overlap = TRUE)
 
 ica %>% 
   mutate(
@@ -448,17 +327,24 @@ ica %>%
 ```
 
 
-```{r,include=FALSE, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
+```{r}
 ica_df <- ica %>% 
   mutate(centroid = st_centroid(geometry),
     x = st_coordinates(centroid)[,1],
     y = st_coordinates(centroid)[,2]) %>% 
   as.data.frame()
-ica_df
+
 ica_df <- ica_df %>% select(Province, Districts, x, y)
 ica_df <- ica_df %>% summarize(Province = tolower(Province), Districts = tolower(Districts), x = x, y = y)
 
 
+```
+
+#### Child and ProvDist data combination
+
+```{r}
+child_dname <- child %>% left_join(provdist[-1])
+child_dname <- child_dname %>% mutate(dname = tolower(DNAME))
 ```
 
 
@@ -471,7 +357,6 @@ ica_df_2$Districts <- ica_df_2$Districts %>%
   str_replace("mandi bahauddin", "mandi bahuddin") %>% 
   as.vector()
 
-child_dname <- child %>% mutate(dname = tolower(DNAME))
 
 child_dname_2 <- child_dname %>% filter(RNAME == "Punjab") %>% left_join(ica_df_2, by = c("dname" = "Districts"))
 
@@ -601,6 +486,45 @@ child_ica <- rbind(child_dname_2, child_dname_3, child_dname_4,
       child_dname_8, child_dname_9)
 ```
 
+#### District IDs
+
+```{r}
+ica %>% 
+  mutate(centroid = st_centroid(geometry),
+    x = st_coordinates(centroid)[,1],
+    y = st_coordinates(centroid)[,2]) %>% 
+    ggplot() +
+  geom_sf() +
+  geom_point(data = child_ica, aes(x, y, label = DID, color = factor(RID))) +
+  geom_text(data = child_ica, aes(x, y, label = DID), size = 5, nudge_y = 0.2, check_overlap = TRUE)
+```
+
+#### Gilgit-Baltistan Region
+
+```{r}
+ica %>% 
+  mutate(centroid = st_centroid(geometry),
+    x = st_coordinates(centroid)[,1],
+    y = st_coordinates(centroid)[,2]) %>% 
+    ggplot() +
+  geom_sf() +
+  geom_point(data = child_ica, aes(x, y, label = DNAME, shape = factor(RID), color = factor(RID))) +
+  geom_text(data = child_ica, aes(x, y, label = DNAME), size = 4.5, nudge_y = 0.2, check_overlap = TRUE) +
+  scale_shape_manual(values = 0:8) +
+  coord_sf(xlim = c(71, 77.9), ylim = c(34, 37.1))
+```
+
+#### Latitudes and longitudes of Gilgit-Baltistan region
+
+```{r}
+child_ica %>% 
+  filter(RID == 6) %>% 
+  summarise(xmin = min(x), xmax = max(x), ymin = min(y), ymax = max(y))
+```
+
+
+#### Average enrollment rate
+
 ```{r, message=FALSE, warning=FALSE, error=FALSE, comment=FALSE}
 ica %>% 
   mutate(centroid = st_centroid(geometry),
@@ -608,9 +532,29 @@ ica %>%
     y = st_coordinates(centroid)[,2]) %>% 
     ggplot() +
   geom_sf() +
-  geom_point(data = child_ica, aes(x, y, label = C003, color = C003)) +
-  geom_text(data = child_ica, aes(x, y, label = C003), check_overlap = TRUE, nudge_y = 1)
+  geom_point(data = child_ica %>% group_by(DID) %>% 
+               mutate(avg_enroll = mean(C003 == 3)), 
+             aes(x, y, label = avg_enroll, color = avg_enroll))
+  # geom_text(data = child_ica%>% group_by(DID) %>% 
+  #             mutate(avg_enroll = mean(C003 == 3)), 
+  #           aes(x, y, avg_enroll), check_overlap = TRUE, nudge_y = 0.5)
 ```
+
+#### Average enrollment rate of female children
+
+```{r}
+ica %>% 
+  mutate(centroid = st_centroid(geometry),
+    x = st_coordinates(centroid)[,1],
+    y = st_coordinates(centroid)[,2]) %>% 
+    ggplot() +
+  geom_sf() +
+  geom_point(data = child_ica %>% filter(C002 == -1) %>% group_by(DID) %>% 
+               mutate(avg_enroll = mean(C003 == 3)), 
+             aes(x, y, label = avg_enroll, color = avg_enroll))
+```
+
+
 
 ```{r, warning=FALSE, error=FALSE, comment=FALSE}
 ica %>% 
@@ -631,8 +575,10 @@ ica %>%
     y = st_coordinates(centroid)[,2]) %>% 
     ggplot() +
   geom_sf() +
-  geom_point(data = child_ica %>% group_by(DID) %>% 
-  mutate(gender_ratio = mean(C002)), aes(x, y, label = gender_ratio, color = gender_ratio))
+  geom_point(data = child_ica %>% 
+               group_by(DID) %>%
+               mutate(gender_ratio = mean(C002)), 
+             aes(x, y, label = gender_ratio, color = gender_ratio))
 ```
 <div><p>0: male, -1: female</p></div><p>Thus, -0.5 indicates the complete gender parity</p>
 
@@ -704,7 +650,7 @@ child_ica %>%
 #### Hunza
 ```{r, warning=FALSE, error=FALSE, comment=FALSE}
 child_ica %>% 
-  filter(C002 == c(0,-1), RID == 6) %>% 
+  filter(C002 != "NA", RID == 6, RID != "NA") %>% 
   group_by(DID, C001, C002) %>% 
   mutate(avg_enrollment = mean(C003 == 3, na.rm = TRUE)) %>% 
   ggplot(aes(C001, avg_enrollment, color = factor(DID), group = DID)) +
@@ -712,15 +658,31 @@ child_ica %>%
   labs(x = "Age") +
   facet_grid(RID~C002, labeller = labeller(RID = RegionName, C002 = Gender)) +
   facet_wrap(RID~C002, labeller = labeller(RID = RegionName, C002 = Gender)) +
-  gghighlight(DID == 266,label_key = DNAME)
+  gghighlight(label_key = DNAME, calculate_per_facet = TRUE)
 ```
+
+```{r}
+child_ica %>% 
+  filter(C002 != "NA", RID == 6, RID != "NA") %>% 
+  group_by(DID, C001, C002) %>% 
+  mutate(avg_enrollment = mean(C003 == 3, na.rm = TRUE)) %>% 
+  ggplot(aes(C001, avg_enrollment, color = factor(DID), group = DID)) +
+  geom_line() +
+  labs(x = "Age") +
+  facet_grid(RID~C002, labeller = labeller(RID = RegionName, C002 = Gender)) +
+  facet_wrap(RID~C002, labeller = labeller(RID = RegionName, C002 = Gender)) +
+  gghighlight(DID == 266,label_key = DNAME, calculate_per_facet = TRUE)
+
+```
+
+
 
 
 #### Karachi 
 ```{r, warning=FALSE, error=FALSE, comment=FALSE}
 
 child_ica %>% 
-  filter(C002 == c(0,-1), RID == 3) %>% 
+  filter(C002 != "NA", RID == 3) %>% 
   group_by(DID, C001, C002) %>% 
   mutate(avg_enrollment = mean(C003 == 3, na.rm = TRUE)) %>% 
   ggplot(aes(C001, avg_enrollment, color = factor(DID), group = DID)) +
@@ -728,9 +690,702 @@ child_ica %>%
   labs(x = "Age") +
   facet_grid(RID~C002, labeller = labeller(RID = RegionName, C002 = Gender)) +
   facet_wrap(RID~C002, labeller = labeller(RID = RegionName, C002 = Gender)) +
-  gghighlight(DID == c(315,316), label_key = DNAME)
+  gghighlight(DID == c(315,316), label_key = DNAME, calculate_per_facet = TRUE)
 ```
 
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### Child & Parents
+```{r}
+child_ica %>%
+  filter(RID == 6, PR004 != "NA") %>% 
+  group_by(DID, PR004) %>% 
+  mutate(avg_enrollment = mean(C003 == 3, na.rm = TRUE)) %>% 
+  ggplot(aes(DID, avg_enrollment, fill = factor(PR004))) +
+  geom_col(aes(factor(DID), avg_enrollment, fill = factor(PR004)), position = "dodge")
+```
+<div><p>Within Gilgit-Baltistan, Hunza is the only district where there are more women who have experience of education than those who have never enrolled in schools.</p></div>
+
+
+```{r}
+child_ica %>%
+  filter(RID == 6, PR009 != "NA") %>% 
+  group_by(DID, PR009) %>% 
+  mutate(avg_enrollment = mean(C003 == 3, na.rm = TRUE)) %>% 
+  ggplot(aes(DID, avg_enrollment, group = PR009, fill = factor(PR009))) +
+  geom_col(aes(factor(DID), avg_enrollment), position = "dodge")
+```
+
+```{r}
+child_ica %>% 
+  filter(PR009 != "NA", PR004 != "NA") %>% 
+  group_by(DID) %>% 
+  mutate(avg_learning = mean(C003 == 3)) %>% 
+  ggplot(aes(PR004, avg_learning, group = PR004)) +
+  geom_boxplot(aes(PR004, avg_learning)) +
+  facet_grid(.~RID)
+
+```
+
+```{r}
+child_ica %>% 
+  filter(PR009 != "NA", PR004 != "NA") %>% 
+  group_by(DID) %>% 
+  mutate(avg_learning = mean(C003 == 3)) %>% 
+  ggplot(aes(PR009, avg_learning, group = PR009)) +
+  geom_boxplot(aes(PR009, avg_learning)) +
+  facet_grid(.~RID)
+```
+ 
+```{r}
+child_ica %>% 
+  filter(PR009 != "NA", PR004 != "NA") %>% 
+  group_by(DID) %>% 
+  mutate(avg_learning = mean(C003 == 3, na.rm = TRUE), mother_enrollment = mean(PR004, na.rm = TRUE)) %>% 
+  ggplot(aes(mother_enrollment, avg_learning)) +
+  geom_point()
+```
+
+ 
+```{r}
+child_ica %>% 
+  filter(PR009 != "NA", PR004 != "NA") %>% 
+  group_by(DID) %>% 
+  mutate(avg_learning = mean(C003 == 3, na.rm = TRUE), mother_enrollment = mean(PR004, na.rm = TRUE)) %>% 
+  ungroup() %>% 
+  summarize(r = cor(mother_enrollment, avg_learning))
+```
+```{r}
+child_ica %>% 
+  filter(PR009 != "NA", PR004 != "NA") %>% 
+  group_by(DID) %>% 
+  mutate(avg_learning = mean(C003 == 3, na.rm = TRUE), father_enrollment = mean(PR009, na.rm = TRUE)) %>% 
+  ggplot(aes(father_enrollment, avg_learning)) +
+  geom_point()
+```
+
+
+```{r}
+child_ica %>% 
+  filter(PR009 != "NA", PR004 != "NA") %>% 
+  group_by(DID) %>% 
+  mutate(avg_learning = mean(C003 == 3), father_enrollment = mean(PR009)) %>% 
+  ungroup() %>% 
+  summarize(r = cor(father_enrollment, avg_learning))
+```
+
+
+```{r}
+child_ica %>% 
+  filter(PR009 != "NA", PR004 != "NA", C003 != "NA", DID == 266, C001 != "NA") %>% 
+  group_by(PR004, C001) %>% 
+  mutate(avg_learning = mean(C010, na.rm = TRUE)) %>% 
+  ggplot(aes(C001, avg_learning, group = PR004, color = factor(PR004))) +
+  geom_line(aes(C001, avg_learning))
+```
+
+```{r}
+child_ica %>% 
+  filter(PR009 != "NA", PR004 != "NA", C003 != "NA", DID == 266, C001 != "NA") %>% 
+  group_by(PR009, C001) %>% 
+  mutate(avg_learning = mean(C010, na.rm = TRUE)) %>% 
+  ggplot(aes(C001, avg_learning, group = PR009, color = factor(PR009))) +
+  geom_line(aes(C001, avg_learning))
+```
+
+```{r}
+child_ica %>% 
+  filter(PR009 != "NA", 
+         PR004 != "NA", 
+         C003 != "NA", 
+         C001 != "NA",
+         RID == 6) %>% 
+  group_by(DID, PR004, C001) %>% 
+  mutate(avg_learning = mean(C010, na.rm = TRUE)) %>% 
+  ggplot(aes(C001, avg_learning, group = PR004, color = factor(PR004))) +
+  geom_line(aes(C001, avg_learning)) +
+  facet_grid(.~DID) +
+  facet_wrap(.~DID)
+```
+
+```{r}
+child_ica %>% 
+  filter(PR009 != "NA", 
+         PR004 != "NA", 
+         C003 != "NA", 
+         C001 != "NA",
+         RID == 6) %>% 
+  group_by(DID, PR009, C001) %>% 
+  mutate(avg_learning = mean(C010, na.rm = TRUE)) %>% 
+  ggplot(aes(C001, avg_learning, group = PR009, color = factor(PR009))) +
+  geom_line(aes(C001, avg_learning)) +
+  facet_grid(.~DID) +
+  facet_wrap(.~DID)
+```
+
+
+```{r}
+child_ica %>% 
+  filter(PR009 != "NA", 
+         PR004 != "NA", 
+         C003 != "NA", 
+         C001 != "NA",
+         RID == 6) %>% 
+  group_by(DID, PR004, C001) %>% 
+  mutate(avg_enrollment = mean(C003 == 3, na.rm = TRUE)) %>% 
+  ggplot(aes(C001, avg_enrollment, group = PR004, color = factor(PR004))) +
+  geom_line(aes(C001, avg_enrollment)) +
+  facet_grid(.~DID) +
+  facet_wrap(.~DID)
+```
+
+```{r}
+child_ica %>%
+  filter(PR009 != "NA", 
+         PR004 != "NA", 
+         C003 != "NA", 
+         C001 != "NA",
+         RID == 6) %>% 
+  group_by(DID, PR009, C001) %>% 
+  mutate(avg_enrollment = mean(C003 == 3, na.rm = TRUE)) %>% 
+  ggplot(aes(C001, avg_enrollment, group = PR009, color = factor(PR009))) +
+  geom_line(aes(C001, avg_enrollment)) +
+  facet_grid(.~DID) +
+  facet_wrap(.~DID)
+```
+
+```{r}
+child_ica %>%
+  group_by(DID, PR006) %>% 
+  ggplot(aes(PR006)) +
+  geom_histogram(aes(PR006), stat = "count") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 5)) +
+  facet_grid(.~RID)
+  
+```
+
+
+
+### Child, Household
+```{r}
+child_ica %>% left_join(house, by = "HHID") %>% 
+  filter(DID.x == 266) %>% 
+  ggplot(aes(H002.x)) +
+  geom_histogram(aes(H002.x), stat = "count")
+```
+
+```{r}
+child_ica %>% 
+  ggplot(aes(x = factor(DID), y = factor(H002), fill = factor(H002))) +
+  geom_bar(aes(x = factor(DID), y = factor(H002)), stat = "identity", position = "fill") +
+  facet_grid(.~RID, scales = "free") +
+  facet_wrap(.~RID, scales = "free") +
+  theme(axis.text.x = element_text(angle = 90, size = 7, hjust = 1)) +
+  coord_cartesian(ylim = c(0,1), clip = "off", expand = FALSE)
+
+```
+
+```{r}
+child_ica %>% 
+  filter(C003 != "NA", RID == 6) %>% 
+  group_by(DID, H002) %>% 
+  mutate(avg_enrollment = mean(C003 == 3)) %>% 
+  ggplot(aes(factor(DID), avg_enrollment, group = H002, fill = factor(H002))) +
+  geom_col(position = "dodge")
+```
+
+```{r}
+child_ica %>% 
+  filter(PR004 != "NA", PR009 != "NA", C010 != "NA") %>% 
+  group_by(DID) %>% 
+  mutate(mother_edu_rate = sum(PR004 == -1)/length(PR004)) %>% 
+  ggplot(aes(DID, mother_edu_rate, shape = factor(RID), color = factor(RID))) +
+  geom_point() +
+  scale_shape_manual(values = 0:8)
+```
+
+#### Average mother education experience 
+
+```{r}
+child_ica %>% 
+  filter(PR004 != "NA", PR009 != "NA", C010 != "NA") %>% 
+  group_by(DID) %>% 
+  mutate(mother_edu_rate = sum(PR004 == -1)/length(PR004)) %>% ungroup() %>% 
+  ggplot(aes(factor(RID), mother_edu_rate, group = RID)) +
+  geom_violin()
+```
+
+
+
+#### How much are mother and father educated?
+
+```{r}
+child_ica %>% 
+  filter(PR004 != "NA", PR009 != "NA", C010 != "NA", C002 != "NA") %>% 
+  ggplot(aes(PR005)) +
+  geom_histogram(stat = "count")
+```
+```{r}
+child_ica %>% 
+  filter(PR004 != "NA", PR009 != "NA", C010 != "NA", C002 != "NA") %>%
+  ggplot(aes(PR010)) +
+  geom_histogram(stat = "count")
+```
+
+#### Pak, children education stage
+
+```{r}
+child_ica %>% 
+  filter(PR004 != "NA", PR009 != "NA", C010 != "NA", C002 != "NA") %>% 
+  group_by(C005) %>% 
+  summarize(n = n()) %>%
+  mutate(C005 = fct_reorder(C005, n)) %>% 
+  ggplot(aes(C005, n)) +
+  geom_col() +
+  coord_flip()
+```
+
+
+
+
+#### Hunza, children education stage
+
+```{r}
+child_ica %>% 
+  filter(PR004 != "NA", PR009 != "NA", !is.na(C010), C002 != "NA", !is.na(C005), DID == 266) %>% 
+  group_by(C005) %>% 
+  summarize(n = n()) %>%
+  mutate(C005 = fct_reorder(C005, n)) %>% 
+  ggplot(aes(C005, n)) +
+  geom_col() +
+  coord_flip()
+  
+```
+
+
+
+
+```{r}
+child_ica %>% 
+  filter(PR004 != "NA", PR009 != "NA", C010 != "NA", C002 != "NA", DID == 266) %>%
+  group_by(PR010) %>% 
+  mutate(n = n()) %>% 
+  ggplot(aes(PR010, n)) +
+  geom_point()
+```
+
+```{r}
+with(child_ica %>% 
+       filter(C002 == -1) %>% 
+       group_by(DID) %>% 
+       mutate(enroll = mean(C003 == 3, na.rm = TRUE), avg = mean(C010, na.rm = TRUE)),
+     scatterplot3d(x = DID, y = enroll, z = avg, color = RID, pch = 19,lty.hplot = 2, scale.y = .75, type = "h"))
+
+```
+
+#### Create dummy variale with regard to region
+
+```{r}
+child_ica_dummy <- child_ica
+child_ica_dummy$Panjab <- ifelse(child_ica_dummy$RID == 2, 1, 0)
+child_ica_dummy$Sindh <- ifelse(child_ica_dummy$RID == 3, 1, 0)
+child_ica_dummy$Balochistan <- ifelse(child_ica_dummy$RID == 4, 1, 0)
+child_ica_dummy$Khyber_Pakhtunkhwa <- ifelse(child_ica_dummy$RID == 5, 1, 0)
+child_ica_dummy$Gilgit_Baltistan <- ifelse(child_ica_dummy$RID == 6, 1, 0)
+child_ica_dummy$Azad_Jammu_and_Kashmir <- ifelse(child_ica_dummy$RID == 7, 1, 0)
+child_ica_dummy$Islamabad_ICT <- ifelse(child_ica_dummy$RID == 8, 1, 0)
+child_ica_dummy$Federally_Administrated_Tribal_Areas <- ifelse(child_ica_dummy$RID == 9, 1, 0)
+```
+
+
+
+```{r}
+child_ica %>%
+  filter(!is.na(PR004), !is.na(PR009)) %>% 
+  filter(HHID == 96546) %>% 
+  select(CID, PRID, C002, C001, PR001, VID, C003, DID, RID)
+
+child_ica %>% 
+  group_by(HHID) %>%
+  mutate(n = n()) %>% 
+  ggplot(aes(factor(n), fill = factor(RID))) +
+  geom_bar(position = "dodge") +
+  facet_grid(.~RID) +
+  facet_wrap(.~RID)
+```
+
+
+
+
+```{r}
+child_ica %>% 
+  filter(!is.na(C002), RID == 6) %>% 
+  group_by(DID, C001, C002) %>% 
+  mutate(enroll = mean(C003 == 3)) %>% 
+  ggplot(aes(C001, enroll, group = C002, color = factor(C002))) +
+  geom_line() +
+  facet_wrap(.~DID)
+```
+
+
+
+
+
+
+### Logistic Regression Analysis
+
+#### Making Dataframe With Dummy Variables
+```{r}
+child_ica_dummy <- child_ica_dummy %>% filter(!is.na(C002), !is.na(C003), !is.na(PR004), !is.na(PR009))
+child_ica_dummy$C002_01 <- ifelse(child_ica_dummy$C002 == -1, 1, 0)
+child_ica_dummy$C003_01 <- ifelse(child_ica_dummy$C003 == 3, 1, 0)
+child_ica_dummy$PR004_01 <- ifelse(child_ica_dummy$PR004 == -1, 1, 0)
+child_ica_dummy$PR009_01 <- ifelse(child_ica_dummy$PR009 == -1, 1, 0)
+```
+
+#### Eliminated NAs
+
+```{r}
+child_ica %>% 
+  summarize(C002_na = sum(is.na(C002)),
+            C003_na = sum(is.na(C003)),
+            PR004_na = sum(is.na(PR004)),
+            PR009_na = sum(is.na(PR009)))
+```
+
+#### Eliminated Rows in Total
+
+```{r}
+data.frame(original_rows = nrow(child_ica),
+           eliminated_rows = nrow(child_ica) - nrow(child_ica_dummy),
+           ratio = (nrow(child_ica)-nrow(child_ica_dummy))/nrow(child_ica))
+
+```
+
+#### Eliminated NAs Hunza
+
+```{r}
+child_ica %>% 
+  filter(DID == 266) %>% 
+  summarize(C002_na = sum(is.na(C002)),
+            C003_na = sum(is.na(C003)),
+            PR004_na = sum(is.na(PR004)),
+            PR009_na = sum(is.na(PR009)))
+```
+
+#### Eliminated Rows in Total Hunza
+
+```{r}
+data.frame(original_rows = nrow(child_ica %>% filter(DID == 266)),
+           eliminated_rows = nrow(child_ica %>% filter(DID == 266)) - nrow(child_ica_dummy %>% filter(DID == 266)),
+           ratio = (nrow(child_ica %>% filter(DID == 266) %>% filter(DID == 266))-nrow(child_ica_dummy %>% filter(DID == 266)))/nrow(child_ica %>% filter(DID == 266)))
+
+```
+
+
+
+#### test
+
+```{r}
+glm_child <- glm(C003_01 ~ C001 + C002_01 + PR004_01, family = "binomial", data = child_ica_dummy)
+
+ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+
+```
+
+
+#### within hunza
+
+```{r}
+# glm_child_hunza <- glm(C003_01 ~ C001 + C002_01 + PR004_01, family = "binomial", data = child_ica_dummy %>% filter(DID == 266))
+glm_child_hunza <- glm(C003_01 ~ C001 + C002_01, family = "binomial", data = child_ica_dummy %>% filter(DID == 266))
+
+ggPredict(glm_child_hunza, se = TRUE, show.summary = TRUE, point = TRUE, colorAsFactor = TRUE)
+```
+<div>In Hunza, gender difference does not provide much difference on child enrollment. instead, parents education has a huge impact.</div>
+
+```{r}
+ggPredict(glm_child_hunza, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE) +
+  coord_cartesian(xlim = c(3,5), ylim = c(0.55, 0.9))
+```
+
+#### exponential transformation
+
+```{r}
+exp(glm_child_hunza$coefficients)
+```
+
+#### confidence interval (intercept and coefficient)
+
+```{r}
+confint(glm_child_hunza, level = 0.95)
+```
+
+#### exponential transformation of confidence interval (odds ratio of intercept and coefficient)
+
+```{r}
+exp(confint(glm_child_hunza, level = 0.95))
+```
+
+#### AIC
+
+```{r}
+extractAIC(glm_child_hunza)
+```
+
+#### BIC
+
+```{r}
+extractAIC(glm_child_hunza, k = log(nrow(glm_child_hunza$data)))
+```
+
+#### effectiveness of explanatory variables
+
+```{r}
+glm_child_hunza_null <- glm(C003_01~1, family = "binomial", data = child_ica_dummy %>% filter(DID == 266))
+anova <- anova(glm_child_hunza_null, glm_child_hunza, test = "Chisq")
+anova
+```
+
+#### variables selection
+
+```{r}
+step(glm_child_hunza_null, direction = "both", 
+     scope = (~ C001 + C002_01 + PR004_01 + PR009_01))
+
+# step(glm_child_null, direction = "both", 
+#      scope = (~ C001 + C002 + PR004_01 + PR009_01 + 
+#                 Panjab + Sindh + Balochistan + Khyber_Pakhtunkhwa + Gilgit_Baltistan + 
+#                 Azad_Jammu_and_Kashmir + Islamabad_ICT))
+
+```
+
+#### multicolinearity
+
+```{r}
+vif(glm_child_hunza)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+glm_child_hunza <- glm(C003_01 ~ C001 + C002_01 + PR009_01, family = "binomial", data = child_ica_dummy %>% filter(DID == 266))
+
+ggPredict(glm_child_hunza, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+```
+
+```{r}
+ggPredict(glm_child_hunza, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE) +
+  coord_cartesian(xlim = c(3,5), ylim = c(0.55, 0.9))
+```
+
+```{r}
+glm_child_hunza <- glm(C003_01 ~ C001 + C002_01 + PR004_01, family = "binomial", data = child_ica_dummy %>% filter(DID == 266))
+
+ggPredict(glm_child_hunza, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+```
+
+#### multi-colinearity?
+
+```{r}
+child_ica_dummy %>% 
+  filter(DID == 266) %>% 
+  group_by(HHID) %>% 
+  summarize(avg = length(unique(PRID)))
+
+child_ica_dummy %>% 
+  filter(DID == 266) %>% 
+  group_by(CID) %>% 
+  summarize(avg = (PR004_01 + PR009_01)/2) %>% 
+  ggplot(aes(factor(avg))) +
+  geom_histogram(stat = "count") 
+```
+
+
+```{r}
+child_ica_dummy %>% filter(RID == 6) %>% summarize(unique(DID))
+sapply(260:266, function(dist){
+  glm_child_dist <- glm(C003_01 ~ C002_01, family = "binomial", data = child_ica_dummy %>% filter(RID == 6, DID == dist))
+  glm_child_dist_null <- glm(C003_01~1, family = "binomial", data = child_ica_dummy %>% filter(RID == 6, DID == dist))
+anova <- anova(glm_child_dist_null, glm_child_dist, test = "Chisq")
+data.frame(result = anova$`Pr(>Chi)`[2], DID = dist, chi_0.05 = anova$`Pr(>Chi)`[2] >= 0.05)
+})
+```
+
+
+```{r}
+id <- child_ica_dummy %>% summarize(unique(DID))
+id <- as.matrix(id)
+id <- as.numeric(id[,1])
+
+dist_logist <- sapply(id, function(dist){
+  glm_child_dist <- glm(C003_01 ~ C002_01, family = "binomial", data = child_ica_dummy %>% filter(DID == dist))
+  glm_child_dist_null <- glm(C003_01~1, family = "binomial", data = child_ica_dummy %>% filter(DID == dist))
+anova <- anova(glm_child_dist_null, glm_child_dist, test = "Chisq")
+data.frame(DID = dist, chi = anova$`Pr(>Chi)`[2], chi_largerThan_0.1 = anova$`Pr(>Chi)`[2] >= 0.1)
+})
+
+anova_dist <- as.data.frame(as.tibble(t(dist_logist)))
+anova_dist$DID <- as.numeric(anova_dist$DID)
+anova_dist$chi <- as.numeric(anova_dist$chi)
+anova_dist$chi_largerThan_0.1 <- as.logical(anova_dist$chi_largerThan_0.1)
+anova_dist
+```
+
+```{r}
+anova_dist %>% 
+  summarize(total_chi_largerThan_0.1 = sum(as.numeric(chi_largerThan_0.1)),
+            ratio = sum(as.numeric(chi_largerThan_0.1))/length(chi_largerThan_0.1))
+```
+
+#### DIDs with chi >= 0.5
+
+```{r}
+anova_dist %>% 
+  filter(chi_largerThan_0.1 == TRUE)
+```
+
+
+```{r}
+glm_child_265 <- glm(C003_01 ~ C001 + C002_01 + PR004_01, family = "binomial", data = child_ica_dummy %>% filter(DID == 265))
+
+ggPredict(glm_child_265, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+```
+
+
+
+
+
+
+
+
+
+
+#### whole pakistan. looking for such districts as have little statistical significance on gender difference
+```{r}
+# dist_chi <- sapply(child_ica_dummy$DID, function(dist){
+#   glm_child_dist <- glm(C003_01 ~ C002_01, family = "binomial", data = child_ica_dummy %>% filter(DID == dist))
+#   glm_child_dist_null <- glm(C003_01 ~ 1, family = "binomial", data = child_ica_dummy %>% filter(DID == dist))
+#   anova_dist <- anova(glm_child_dist_null, glm_child_dist, test = "Chisq")
+#   anova_dist$`Pr(>Chi)`[2] 
+# })
+
+
+glm_child_pak <- glm(C003_01 ~ C002_01, family = "binomial", data = child_ica_dummy)
+
+```
+
+
+
+
+
+
+
+
+
+
+#### fit the model
+
+```{r}
+glm_child <- glm(C003_01~ C001 + C002_01 + PR004_01, family = "binomial", data = child_ica_dummy)
+
+# glm_child <- glm(enroll01~ C001 + C002 + PR004 + PR009 +
+#                    Panjab + Sindh + Balochistan + Khyber_Pakhtunkhwa + 
+#                    Gilgit_Baltistan + Azad_Jammu_and_Kashmir + Islamabad_ICT, 
+#                  family = "binomial", data = child_ica_dummy %>% filter(!is.na(C002)))
+summary(glm_child)
+```
+
+#### exponential transformation
+
+```{r}
+exp(glm_child$coefficients)
+```
+
+#### confidence interval (intercept and coefficient)
+
+```{r}
+confint(glm_child, level = 0.95)
+```
+
+#### exponential transformation of confidence interval (odds ratio of intercept and coefficient)
+
+```{r}
+exp(confint(glm_child, level = 0.95))
+```
+
+#### AIC
+
+```{r}
+extractAIC(glm_child)
+```
+
+#### BIC
+
+```{r}
+extractAIC(glm_child, k = log(nrow(glm_child$data)))
+```
+
+#### effectiveness of explanatory variables
+
+```{r}
+glm_child_null <- glm(C003_01~1, family = "binomial", data = child_ica_dummy)
+anova(glm_child_null, glm_child, test = "Chisq")
+```
+
+#### variables selection
+
+```{r}
+step(glm_child_null, direction = "both", 
+     scope = (~ C001 + C002_01 + PR004_01 + PR009_01))
+
+# step(glm_child_null, direction = "both", 
+#      scope = (~ C001 + C002 + PR004_01 + PR009_01 + 
+#                 Panjab + Sindh + Balochistan + Khyber_Pakhtunkhwa + Gilgit_Baltistan + 
+#                 Azad_Jammu_and_Kashmir + Islamabad_ICT))
+
+```
+
+#### multicolinearity
+
+```{r}
+vif(glm_child)
+```
 
 
 
