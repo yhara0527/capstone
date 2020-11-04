@@ -1099,7 +1099,6 @@ ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point
 #### within hunza
 
 ```{r}
-# glm_child_hunza <- glm(C003_01 ~ C001 + C002_01 + PR004_01, family = "binomial", data = child_ica_dummy %>% filter(DID == 266))
 glm_child_hunza <- glm(C003_01 ~ n_children_in_household + PR004_PR009_01 + C002_01, family = "binomial", data = child_ica_dummy %>% filter(DID == 266))
 
 ggPredict(glm_child_hunza, se = TRUE, show.summary = TRUE, point = TRUE, colorAsFactor = TRUE)
@@ -1174,6 +1173,220 @@ vif(glm_child_hunza)
 
 
 
+#### GLM C003_01 ~ n_children_in_household + H002 + PR004_PR009_01
+
+```{r}
+glm_child <- glm(C003_01 ~ n_children_in_household + H002 + PR004_PR009_01, family = "binomial", data = child_ica_dummy)
+
+ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+
+```
+
+
+#### within hunza
+
+```{r}
+glm_child_hunza <- glm(C003_01 ~ n_children_in_household + H002 + PR004_PR009_01, family = "binomial", data = child_ica_dummy %>% filter(DID == 266))
+
+ggPredict(glm_child_hunza, se = TRUE, show.summary = TRUE, point = TRUE, colorAsFactor = TRUE)
+```
+<div></div>
+
+```{r}
+ggPredict(glm_child_hunza, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE) +
+  coord_cartesian(xlim = c(3,5), ylim = c(0.55, 0.9))
+```
+
+#### exponential transformation
+
+```{r}
+exp(glm_child_hunza$coefficients)
+```
+
+#### confidence interval (intercept and coefficient)
+
+```{r}
+confint(glm_child_hunza, level = 0.95)
+```
+
+#### exponential transformation of confidence interval (odds ratio of intercept and coefficient)
+
+```{r}
+exp(confint(glm_child_hunza, level = 0.95))
+```
+
+#### AIC
+
+```{r}
+extractAIC(glm_child_hunza)
+```
+
+#### BIC
+
+```{r}
+extractAIC(glm_child_hunza, k = log(nrow(glm_child_hunza$data)))
+```
+
+#### effectiveness of explanatory variables
+
+```{r}
+glm_child_hunza_null <- glm(C003_01~1, family = "binomial", data = child_ica_dummy %>% filter(DID == 266))
+anova <- anova(glm_child_hunza_null, glm_child_hunza, test = "Chisq")
+anova
+```
+
+#### variables selection
+
+```{r}
+step(glm_child_hunza_null, direction = "both", 
+     scope = (~ C001 + C002_01 + PR004_01 + PR009_01))
+
+# step(glm_child_null, direction = "both", 
+#      scope = (~ C001 + C002 + PR004_01 + PR009_01 + 
+#                 Panjab + Sindh + Balochistan + Khyber_Pakhtunkhwa + Gilgit_Baltistan + 
+#                 Azad_Jammu_and_Kashmir + Islamabad_ICT))
+
+```
+
+#### multicolinearity
+
+```{r}
+vif(glm_child_hunza)
+```
+
+
+
+
+
+
+
+
+
+#### GLM C003_01 ~ n_children_in_household + PR004_PR009_01 + H002
+
+```{r}
+glm_child <- glm(C003_01 ~ n_children_in_household + PR004_PR009_01 + H002, family = "binomial", data = child_ica_dummy)
+
+ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+
+```
+
+
+#### within hunza
+
+```{r}
+glm_child_hunza <- glm(C003_01 ~ n_children_in_household + PR004_PR009_01 + H002, family = "binomial", data = child_ica_dummy %>% filter(DID == 266))
+
+ggPredict(glm_child_hunza, se = TRUE, show.summary = TRUE, point = TRUE, colorAsFactor = TRUE)
+```
+
+
+
+
+
+
+
+
+
+#### GLM C003_01 ~ n_children_in_household + H002 + C002_01
+
+```{r}
+glm_child <- glm(C003_01 ~ n_children_in_household + H002 + C002_01, family = "binomial", data = child_ica_dummy)
+
+ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+
+```
+
+
+#### within hunza
+
+```{r}
+glm_child_hunza <- glm(C003_01 ~ n_children_in_household + H002 + C002_01, family = "binomial", data = child_ica_dummy %>% filter(DID == 266))
+
+ggPredict(glm_child_hunza, se = TRUE, show.summary = TRUE, point = TRUE, colorAsFactor = TRUE)
+```
+<div></div>
+
+```{r}
+ggPredict(glm_child_hunza, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE) +
+  coord_cartesian(xlim = c(3,5), ylim = c(0.55, 0.9))
+```
+
+#### exponential transformation
+
+```{r}
+exp(glm_child_hunza$coefficients)
+```
+
+#### confidence interval (intercept and coefficient)
+
+```{r}
+confint(glm_child_hunza, level = 0.95)
+```
+
+#### exponential transformation of confidence interval (odds ratio of intercept and coefficient)
+
+```{r}
+exp(confint(glm_child_hunza, level = 0.95))
+```
+
+#### AIC
+
+```{r}
+extractAIC(glm_child_hunza)
+```
+
+#### BIC
+
+```{r}
+extractAIC(glm_child_hunza, k = log(nrow(glm_child_hunza$data)))
+```
+
+#### effectiveness of explanatory variables
+
+```{r}
+glm_child_hunza_null <- glm(C003_01~1, family = "binomial", data = child_ica_dummy %>% filter(DID == 266))
+anova <- anova(glm_child_hunza_null, glm_child_hunza, test = "Chisq")
+anova
+```
+
+#### variables selection
+
+```{r}
+step(glm_child_hunza_null, direction = "both", 
+     scope = (~ C001 + C002_01 + PR004_01 + PR009_01))
+
+# step(glm_child_null, direction = "both", 
+#      scope = (~ C001 + C002 + PR004_01 + PR009_01 + 
+#                 Panjab + Sindh + Balochistan + Khyber_Pakhtunkhwa + Gilgit_Baltistan + 
+#                 Azad_Jammu_and_Kashmir + Islamabad_ICT))
+
+```
+
+#### multicolinearity
+
+```{r}
+vif(glm_child_hunza)
+```
+
+
+#### GLM C003_01 ~ n_children_in_household + C002_01 + H002
+
+```{r}
+glm_child <- glm(C003_01 ~ n_children_in_household + C002_01 + H002, family = "binomial", data = child_ica_dummy)
+
+ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+
+```
+
+
+#### within hunza
+
+```{r}
+glm_child_hunza <- glm(C003_01 ~n_children_in_household + C002_01 + H002, family = "binomial", data = child_ica_dummy %>% filter(DID == 266))
+
+ggPredict(glm_child_hunza, se = TRUE, show.summary = TRUE, point = TRUE, colorAsFactor = TRUE)
+```
 
 
 
