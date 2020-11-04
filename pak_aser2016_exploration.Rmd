@@ -134,7 +134,7 @@ child %>%
 ```
 <p>As a rate, both are doing pretty good</p>
 
-#### Currently-Enrolled: Institution Type (C006)
+#### Currently-Enrolled: Institution Type (C006) in Hunza
 1 = Government; 2 = Private; 3 = Madrasah(Conventional religious education) School; 4 = Other(Non formal education facility)
 ```{r, warning=FALSE, message=FALSE}
 child %>% 
@@ -158,14 +158,7 @@ child %>%
     
 ```
 <p>Within Gilgit-Baltistan, Hunza is outperforming.</p>
-```{r, warning=FALSE}
-child %>% 
-  filter(RID == 6) %>% 
-  group_by(DID) %>% 
-  ggplot(aes(DID, C010)) +
-  geom_boxplot(aes(group = DID)) +
-  scale_x_continuous(breaks = 260:266, labels = c("Gilgit", "Diamer", "Skardu", "Ghanshe", "Astore", "Ghizer", "Hunza-Nagar"))
-```
+
 
 #### Basic Learning Levels: Reading in Local/National Language (C010)
 1 = Begginer/Nothing; 2 = Letters; 3 = Words; 4 = Sentences; 5 = Story
@@ -230,38 +223,11 @@ child %>%
 child %>% 
   group_by(DID, C002) %>% 
   mutate(enrollment_rate = mean(C003 == 3, na.rm = TRUE)) %>% 
-  ggplot(aes(DID, enrollment_rate, color = factor(DID), label = C002)) +
+  ggplot(aes(DID, enrollment_rate, color = factor(RID), label = C002)) +
   geom_point(show.legend = FALSE) +
   geom_text(aes(label = C002), show.legend = FALSE, nudge_y = 0.05) 
   
 ```
-
-
-```{r}
-child %>%
-  filter(C002 == c(0, -1)) %>%
-  group_by(DID, C002) %>%
-  mutate(enrollment_rate = mean(C003 == 3, na.rm = TRUE)) %>%
-  ggplot(aes(DID, enrollment_rate, color = C002, label = DID)) +
-  geom_text(aes(label = DID), size = 2.5) +
-  facet_grid(.~RID) +
-  facet_wrap(.~RID)
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 ### Comparison between Other Region
 #### Current Enrollment Rate
@@ -945,14 +911,34 @@ child_ica %>%
 child_ica %>% 
   filter(PR004 != "NA", PR009 != "NA", C010 != "NA", C002 != "NA") %>% 
   ggplot(aes(PR005)) +
-  geom_histogram(stat = "count")
+  geom_histogram(stat = "count") +
+  coord_flip()
 ```
+
+```{r}
+child_ica %>% 
+  ggplot(aes(PR006)) +
+  geom_histogram(stat = "count") +
+  coord_flip()
+```
+
+
 ```{r}
 child_ica %>% 
   filter(PR004 != "NA", PR009 != "NA", C010 != "NA", C002 != "NA") %>%
   ggplot(aes(PR010)) +
-  geom_histogram(stat = "count")
+  geom_histogram(stat = "count") +
+  coord_flip()
 ```
+
+```{r}
+child_ica %>% 
+  ggplot(aes(PR011)) +
+  geom_histogram(stat = "count") +
+  coord_flip()
+```
+
+
 
 #### Pak, children education stage
 
@@ -987,24 +973,6 @@ child_ica %>%
 
 
 
-```{r}
-child_ica %>% 
-  filter(PR004 != "NA", PR009 != "NA", C010 != "NA", C002 != "NA", DID == 266) %>%
-  group_by(PR010) %>% 
-  mutate(n = n()) %>% 
-  ggplot(aes(PR010, n)) +
-  geom_point()
-```
-
-```{r}
-with(child_ica %>% 
-       filter(C002 == -1) %>% 
-       group_by(DID) %>% 
-       mutate(enroll = mean(C003 == 3, na.rm = TRUE), avg = mean(C010, na.rm = TRUE)),
-     scatterplot3d(x = DID, y = enroll, z = avg, color = RID, pch = 19,lty.hplot = 2, scale.y = .75, type = "h"))
-
-```
-
 #### Create dummy variale with regard to region
 
 ```{r}
@@ -1019,7 +987,7 @@ child_ica_dummy$Islamabad_ICT <- ifelse(child_ica_dummy$RID == 8, 1, 0)
 child_ica_dummy$Federally_Administrated_Tribal_Areas <- ifelse(child_ica_dummy$RID == 9, 1, 0)
 ```
 
-
+#### Number of Children in a household
 
 ```{r}
 child_ica %>%
@@ -1037,7 +1005,7 @@ child_ica %>%
 ```
 
 
-
+#### Enrollment and Gender within Gilgit-Baltistan
 
 ```{r}
 child_ica %>% 
@@ -1063,7 +1031,16 @@ child_ica_dummy$C002_01 <- ifelse(child_ica_dummy$C002 == -1, 1, 0)
 child_ica_dummy$C003_01 <- ifelse(child_ica_dummy$C003 == 3, 1, 0)
 child_ica_dummy$PR004_01 <- ifelse(child_ica_dummy$PR004 == -1, 1, 0)
 child_ica_dummy$PR009_01 <- ifelse(child_ica_dummy$PR009 == -1, 1, 0)
+child_ica_dummy$PR004_PR009_01 <- ifelse(child_ica_dummy$PR004 == -1 | child_ica_dummy$PR009 == -1, 1, 0)
+
+n_children_in_household <- child_ica_dummy %>% 
+  group_by(HHID) %>% 
+  summarize(n_children_in_household = length(unique(CID)))
+
+child_ica_dummy <- child_ica_dummy %>% left_join(n_children_in_household)
 ```
+
+
 
 #### Eliminated NAs
 
@@ -1106,10 +1083,13 @@ data.frame(original_rows = nrow(child_ica %>% filter(DID == 266)),
 
 
 
-#### test
+
+
+
+#### GLM C003_01 ~ n_children_in_household + PR004_PR009_01 + C002_01
 
 ```{r}
-glm_child <- glm(C003_01 ~ C001 + C002_01 + PR004_01, family = "binomial", data = child_ica_dummy)
+glm_child <- glm(C003_01 ~ n_children_in_household + PR004_PR009_01 + C002_01, family = "binomial", data = child_ica_dummy)
 
 ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
 
@@ -1120,7 +1100,7 @@ ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point
 
 ```{r}
 # glm_child_hunza <- glm(C003_01 ~ C001 + C002_01 + PR004_01, family = "binomial", data = child_ica_dummy %>% filter(DID == 266))
-glm_child_hunza <- glm(C003_01 ~ C001 + C002_01, family = "binomial", data = child_ica_dummy %>% filter(DID == 266))
+glm_child_hunza <- glm(C003_01 ~ n_children_in_household + PR004_PR009_01 + C002_01, family = "binomial", data = child_ica_dummy %>% filter(DID == 266))
 
 ggPredict(glm_child_hunza, se = TRUE, show.summary = TRUE, point = TRUE, colorAsFactor = TRUE)
 ```
@@ -1236,6 +1216,7 @@ child_ica_dummy %>%
   geom_histogram(stat = "count") 
 ```
 
+#### Districts in Gilgit-Baltistan
 
 ```{r}
 child_ica_dummy %>% filter(RID == 6) %>% summarize(unique(DID))
@@ -1247,17 +1228,33 @@ data.frame(result = anova$`Pr(>Chi)`[2], DID = dist, chi_0.05 = anova$`Pr(>Chi)`
 })
 ```
 
+<div>Within Gilgit-Baltistan, 3 of 7 districts including Hunza has Chi > 0.05</div>
 
-```{r}
+#### Logistic Regression and Anova for All Districts
+
+```{r Logistic Regression for All Districts}
 id <- child_ica_dummy %>% summarize(unique(DID))
 id <- as.matrix(id)
 id <- as.numeric(id[,1])
 
 dist_logist <- sapply(id, function(dist){
-  glm_child_dist <- glm(C003_01 ~ C002_01, family = "binomial", data = child_ica_dummy %>% filter(DID == dist))
-  glm_child_dist_null <- glm(C003_01~1, family = "binomial", data = child_ica_dummy %>% filter(DID == dist))
-anova <- anova(glm_child_dist_null, glm_child_dist, test = "Chisq")
-data.frame(DID = dist, chi = anova$`Pr(>Chi)`[2], chi_largerThan_0.05 = anova$`Pr(>Chi)`[2] >= 0.05, chi_largerThan_0.1 = anova$`Pr(>Chi)`[2] >= 0.1)
+  
+  glm_child_dist <- glm(C003_01 ~ C002_01, 
+                        family = "binomial", 
+                        data = child_ica_dummy %>% 
+                          filter(DID == dist))
+  
+  glm_child_dist_null <- glm(C003_01~1, 
+                             family = "binomial", 
+                             data = child_ica_dummy %>% 
+                               filter(DID == dist))
+
+  anova <- anova(glm_child_dist_null, glm_child_dist, test = "Chisq")
+
+data.frame(DID = dist, 
+           chi = anova$`Pr(>Chi)`[2], 
+           chi_largerThan_0.05 = anova$`Pr(>Chi)`[2] >= 0.05, 
+           chi_largerThan_0.1 = anova$`Pr(>Chi)`[2] >= 0.1)
 })
 
 anova_dist <- as.data.frame(as.tibble(t(dist_logist)))
@@ -1269,14 +1266,30 @@ anova_dist$chi_largerThan_0.05 <- as.logical(anova_dist$chi_largerThan_0.05)
 
 ```{r}
 anova_dist %>% 
-  summarize(total_chi_largerThan_0.1 = sum(as.numeric(chi_largerThan_0.1)),
-            ratio = sum(as.numeric(chi_largerThan_0.1))/length(chi_largerThan_0.1))
+  summarize(total_chi_largerThan_0.05 = sum(as.numeric(chi_largerThan_0.05)),
+            ratio_0.05 = sum(as.numeric(chi_largerThan_0.05))/length(chi_largerThan_0.05), 
+            total_chi_largerThan_0.1 = sum(as.numeric(chi_largerThan_0.1)),
+            ratio_0.1 = sum(as.numeric(chi_largerThan_0.1))/length(chi_largerThan_0.1))
 ```
+
+
+
+#### DIDs with chi >= 0.05
 
 ```{r}
 anova_dist %>% 
-  summarize(total_chi_largerThan_0.05 = sum(as.numeric(chi_largerThan_0.05)),
-            ratio = sum(as.numeric(chi_largerThan_0.05))/length(chi_largerThan_0.05))
+  filter(chi_largerThan_0.05 == TRUE) %>% 
+  select(-chi_largerThan_0.1)
+```
+
+#### DID chi > 0.05
+
+```{r}
+DID_chi_0.05 <- anova_dist %>% 
+  filter(chi_largerThan_0.05 == TRUE) %>% 
+  select(DID) %>% 
+  pull()
+DID_chi_0.05
 ```
 
 
@@ -1284,42 +1297,95 @@ anova_dist %>%
 
 ```{r}
 anova_dist %>% 
-  filter(chi_largerThan_0.1 == TRUE)
+  filter(chi_largerThan_0.1 == TRUE) %>% 
+  select(-chi_largerThan_0.05)
 ```
+
+#### DID chi > 0.1
 
 ```{r}
-anova_dist %>% 
-  filter(chi_largerThan_0.05 == TRUE)
+DID_chi_0.1 <- anova_dist %>% 
+  filter(chi_largerThan_0.1 == TRUE) %>% 
+  select(DID) %>% 
+  pull()
 ```
+
+
+
 
 ```{r}
-glm_child_265 <- glm(C003_01 ~ C001 + C002_01 + PR004_01, family = "binomial", data = child_ica_dummy %>% filter(DID == 265))
-
-ggPredict(glm_child_265, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+child %>% 
+  filter(C002 == -1) %>% 
+  group_by(DID) %>% 
+  mutate(avg_learning = mean(C010, na.rm = TRUE)) %>% 
+  ggplot(aes(DID, avg_learning)) +
+  geom_point(data = child %>% 
+               filter(C002 == -1 & DID == DID_chi_0.05) %>% 
+               group_by(DID) %>%
+               mutate(avg_learning = mean(C010, na.rm = TRUE)), size = 4, color = "red") +
+  geom_point(aes(color = RID)) +
+  geom_text(aes(label = DID), nudge_x = 5, check_overlap = TRUE)
 ```
-
-
-
-
-
-
-
-
-
-
-#### whole pakistan. looking for such districts as have little statistical significance on gender difference
 ```{r}
-# dist_chi <- sapply(child_ica_dummy$DID, function(dist){
-#   glm_child_dist <- glm(C003_01 ~ C002_01, family = "binomial", data = child_ica_dummy %>% filter(DID == dist))
-#   glm_child_dist_null <- glm(C003_01 ~ 1, family = "binomial", data = child_ica_dummy %>% filter(DID == dist))
-#   anova_dist <- anova(glm_child_dist_null, glm_child_dist, test = "Chisq")
-#   anova_dist$`Pr(>Chi)`[2] 
-# })
-
-
-glm_child_pak <- glm(C003_01 ~ C002_01, family = "binomial", data = child_ica_dummy)
-
+child %>% 
+  filter(DID == DID_chi_0.1) %>%
+  group_by(DID, C001) %>% 
+  mutate(enroll = mean(C003 == 3)) %>% 
+  ggplot(aes(C001, enroll)) +
+  geom_point() +
+  geom_smooth() +
+  facet_wrap(DID~.)
 ```
+
+
+#### education stages
+
+```{r}
+child_ica_dummy %>% 
+  group_by(DID) %>% 
+  mutate(n = length(C003),
+            dropout = sum(C003 == 2),
+            dropout_ratio = mean(C003 == 2),
+            never = sum(C003 == 1),
+            never_ratio = mean(C003 == 1)) %>% 
+  ggplot(aes(DID, never_ratio, color = factor(RID))) +
+  geom_point()
+```
+
+#### Average Number of Children in a household
+
+```{r}
+child_ica %>% 
+  group_by(HHID) %>% 
+  mutate(n_children = length(unique(CID))) %>% 
+  ungroup() %>% 
+  group_by(DID) %>% 
+  mutate(avg_n_children = mean(n_children)) %>% 
+  ggplot(aes(DID, avg_n_children, color = factor(RID))) +
+  geom_point()
+```
+
+
+```{r}
+child_ica %>% 
+  ggplot(aes(C005)) +
+  geom_histogram(stat = "count") +
+  coord_flip()
+```
+```{r}
+unique(child_ica$C005)
+```
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1398,6 +1464,142 @@ step(glm_child_null, direction = "both",
 vif(glm_child)
 
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#### Paid-Tuition helps?
+
+```{r}
+child_ica %>% 
+  filter(PR009 == 0, !is.na(C008a)) %>% 
+  summarize(n = length(unique(CID)),
+            paid_tuition = sum(C008a == -1), 
+            ratio = paid_tuition/n)
+```
+
+#### Hunza
+
+```{r}
+child_ica %>% 
+  filter(DID == 266, PR009 == 0, !is.na(C008a)) %>% 
+  summarize(n = length(unique(CID)),
+            paid_tuition = sum(C008a == -1), 
+            ratio = paid_tuition/n)
+```
+
+
+```{r}
+child_ica %>% 
+  filter(DID == 266, PR004 == 0, !is.na(C008a)) %>% 
+  summarize(n = length(unique(CID)),
+            paid_tuition = sum(C008a == -1), 
+            ratio = paid_tuition/n)
+```
+
+
+```{r}
+child_ica %>% 
+  filter(DID == 266, !is.na(PR009)) %>% 
+  summarize(father_edu_ratio = sum(PR009 == -1)/length(PR009))
+```
+```{r}
+child_ica %>% 
+  filter(!is.na(PR009)) %>% 
+  summarize(father_edu_ratio = sum(PR009 == -1)/length(PR009))
+```
+
+```{r}
+child_ica %>% 
+  filter(!is.na(PR009)) %>% 
+  group_by(DID) %>% 
+  mutate(father_edu_ratio = sum(PR009 == -1)/length(PR009)) %>% 
+  ggplot(aes(factor(DID), father_edu_ratio)) +
+  geom_point()
+```
+
+```{r}
+child_ica %>% 
+  filter(!is.na(PR009), !is.na(PR004)) %>% 
+  group_by(DID) %>% 
+  mutate(mother_edu_ratio = sum(PR004 == -1)/length(PR004)) %>% 
+  ggplot(aes(factor(DID), mother_edu_ratio)) +
+  geom_point()
+```
+
+
+```{r}
+child_ica %>% 
+  group_by(DID) %>% 
+  mutate(avg_paid = mean(C008a == -1, na.rm = TRUE)) %>% 
+  ggplot(aes(DID, avg_paid)) +
+  geom_point()+
+  scale_y_continuous(limits = c(0,1))
+```
+
+```{r}
+child_ica %>% 
+  filter(!is.na(C002)) %>%
+  group_by(DID) %>% 
+  summarize(avg_paid = mean(C008a == -1),
+         female = mean(child_ica %>% filter(C002 == -1) %>% 
+                         group_by(DID) %>% .$C003 == 3),
+         male = mean(child_ica %>% filter(C002 == 0) %>% 
+                       group_by(DID) %>% .$C003 == 3),
+         ratio = female/male)
+
+```
+```{r}
+child_ica %>% 
+  filter(!is.na(C002)) %>%
+  group_by(DID, C002) %>% 
+  summarize(enroll = mean(C003 == 3)) %>% 
+  ungroup() %>% 
+  spread(C002, enroll) %>% 
+  summarize(DID = DID,
+            gender_ratio = .$"-1"/.$"0") %>% 
+  ggplot(aes(DID, gender_ratio)) +
+  geom_point() +
+  scale_y_continuous(limits = c(0,1))
+```
+
+#### correlation b/w paid-tuition and enrollment?
+
+```{r}
+child_ica %>% 
+  filter(!is.na(C002)) %>%
+  group_by(DID) %>% 
+  mutate(paid_tuition = mean(C008a == -1, na.rm = TRUE)) %>% 
+  group_by(DID, C002) %>% 
+  mutate(enroll = mean(C003 == 3)) %>% 
+  ggplot(aes(paid_tuition, enroll)) +
+  geom_point() +
+  geom_smooth() +
+  facet_grid(.~C002)
+  
+```
+
+
+
+
+
 
 
 
