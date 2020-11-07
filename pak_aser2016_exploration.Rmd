@@ -30,10 +30,10 @@ library(dplyr)
 library(sf)
 library(scatterplot3d)
 library(car)
+library(ResourceSelection) #to excute Hosmer-Lemeshow test
 # library(broom)
 require(ggiraph)
 require(ggiraphExtra)
-
 # require(plyr)
 ```
 #### Data Installation
@@ -214,20 +214,7 @@ child %>%
   facet_grid(~C002, labeller = labeller(C002 = Gender))
 ```
 
-```{r}
-child %>% 
-  filter(DID == 266) %>% 
-  group_by(C002) %>% 
-  summarize(enrollment_rate = mean(C003 == 3, na.rm = TRUE))
 
-child %>% 
-  group_by(DID, C002) %>% 
-  mutate(enrollment_rate = mean(C003 == 3, na.rm = TRUE)) %>% 
-  ggplot(aes(DID, enrollment_rate, color = factor(RID), label = C002)) +
-  geom_point(show.legend = FALSE) +
-  geom_text(aes(label = C002), show.legend = FALSE, nudge_y = 0.05) 
-  
-```
 
 ### Comparison between Other Region
 #### Current Enrollment Rate
@@ -548,40 +535,11 @@ ica %>%
 ```
 <div><p>0: male, -1: female</p></div><p>Thus, -0.5 indicates the complete gender parity</p>
 
-```{r, warning=FALSE, error=FALSE, comment=FALSE}
-ica %>% 
-  mutate(centroid = st_centroid(geometry),
-    x = st_coordinates(centroid)[,1],
-    y = st_coordinates(centroid)[,2]) %>% 
-    ggplot() +
-  geom_sf() +
-  geom_point(data = child_ica %>% group_by(DID) %>% 
-  mutate(gender_ratio = mean(C002, na.rm = TRUE)), aes(x, y, label = gender_ratio, color = gender_ratio, size = -gender_ratio))
-```
 
-```{r, warning=FALSE, error=FALSE, comment=FALSE}
-ica %>% 
-  mutate(centroid = st_centroid(geometry),
-    x = st_coordinates(centroid)[,1],
-    y = st_coordinates(centroid)[,2]) %>% 
-    ggplot() +
-  geom_sf() +
-  geom_point(data = (child_ica %>% filter(C001 == 14:16) %>% group_by(DID) %>% 
-               mutate(avg_learning_level = mean(C010, na.rm = TRUE))), aes(x, y, label = avg_learning_level, color = avg_learning_level, size = avg_learning_level))
 
-```
 
-```{r, warning=FALSE, error=FALSE, comment=FALSE}
-ica %>% 
-  mutate(centroid = st_centroid(geometry),
-    x = st_coordinates(centroid)[,1],
-    y = st_coordinates(centroid)[,2]) %>% 
-    ggplot() +
-  geom_sf() +
-  geom_point(data = (child_ica %>% filter(C001 == 12:16) %>% group_by(DID) %>%
-                       mutate(gender_ratio = mean(C002, na.rm = TRUE), avg_learning_level = mean(C010, na.rm = TRUE))), aes(x, y, label = gender_ratio, color = gender_ratio, size = avg_learning_level)) +
-  theme(axis.title = element_text())
-```
+
+### Children
 
 #### Average Local/National Language Level Across Ages by Rgion
 ```{r, warning=FALSE, error=FALSE, comment=FALSE}
@@ -597,8 +555,9 @@ child_ica %>%
 
 ```
 
+#### Average Enrollment Rate
 
-#### Average Enrollment Rate Across Ages by Rgion
+##### Across Ages by Rgion
 ```{r, warning=FALSE, error=FALSE, comment=FALSE}
 child_ica %>% 
   filter(C002 == c(0,-1)) %>% 
@@ -613,7 +572,7 @@ child_ica %>%
 
 ```
 
-#### Hunza
+##### Hunza
 ```{r, warning=FALSE, error=FALSE, comment=FALSE}
 child_ica %>% 
   filter(C002 != "NA", RID == 6, RID != "NA") %>% 
@@ -641,10 +600,7 @@ child_ica %>%
 
 ```
 
-
-
-
-#### Karachi 
+##### Karachi 
 ```{r, warning=FALSE, error=FALSE, comment=FALSE}
 
 child_ica %>% 
@@ -659,31 +615,67 @@ child_ica %>%
   gghighlight(DID == c(315,316), label_key = DNAME, calculate_per_facet = TRUE)
 ```
 
+##### children Education Stage
+
+```{r}
+child_ica %>% 
+  filter(PR004 != "NA", PR009 != "NA", C010 != "NA", C002 != "NA") %>% 
+  group_by(C005) %>% 
+  summarize(n = n()) %>%
+  mutate(C005 = fct_reorder(C005, n)) %>% 
+  ggplot(aes(C005, n)) +
+  geom_col() +
+  coord_flip()
+```
+
+
+
+
+##### Hunza. Children Education Stage
+
+```{r}
+child_ica %>% 
+  filter(PR004 != "NA", PR009 != "NA", !is.na(C010), C002 != "NA", !is.na(C005), DID == 266) %>% 
+  group_by(C005) %>% 
+  summarize(n = n()) %>%
+  mutate(C005 = fct_reorder(C005, n)) %>% 
+  ggplot(aes(C005, n)) +
+  geom_col() +
+  coord_flip()
   
+```
+
+##### Enrollment and Gender within Gilgit-Baltistan
+
+```{r}
+child_ica %>% 
+  filter(!is.na(C002), RID == 6) %>% 
+  group_by(DID, C001, C002) %>% 
+  mutate(enroll = mean(C003 == 3)) %>% 
+  ggplot(aes(C001, enroll, group = C002, color = factor(C002))) +
+  geom_line() +
+  facet_wrap(.~DID)
+```
+
+##### Education Etages
+
+```{r}
+child_ica %>% 
+  group_by(DID) %>% 
+  mutate(n = length(C003),
+            dropout = sum(C003 == 2),
+            dropout_ratio = mean(C003 == 2),
+            never = sum(C003 == 1),
+            never_ratio = mean(C003 == 1)) %>% 
+  ggplot(aes(DID, never_ratio, color = factor(RID))) +
+  geom_point()
+```
 
 
+#### Child & Parents
 
+##### Mother Enrollment by District
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### Child & Parents
 ```{r}
 child_ica %>%
   filter(RID == 6, PR004 != "NA") %>% 
@@ -694,6 +686,7 @@ child_ica %>%
 ```
 <div><p>Within Gilgit-Baltistan, Hunza is the only district where there are more women who have experience of education than those who have never enrolled in schools.</p></div>
 
+##### Father Enrollment by District
 
 ```{r}
 child_ica %>%
@@ -703,6 +696,8 @@ child_ica %>%
   ggplot(aes(DID, avg_enrollment, group = PR009, fill = factor(PR009))) +
   geom_col(aes(factor(DID), avg_enrollment), position = "dodge")
 ```
+
+##### Mother's Education and Children Learning Level by Region. boxplot
 
 ```{r}
 child_ica %>% 
@@ -715,6 +710,8 @@ child_ica %>%
 
 ```
 
+##### Father's Education and Children Learning Level by Region. boxplot
+
 ```{r}
 child_ica %>% 
   filter(PR009 != "NA", PR004 != "NA") %>% 
@@ -724,7 +721,9 @@ child_ica %>%
   geom_boxplot(aes(PR009, avg_learning)) +
   facet_grid(.~RID)
 ```
- 
+
+##### Mother's Education and Children Learning Level by District
+
 ```{r}
 child_ica %>% 
   filter(PR009 != "NA", PR004 != "NA") %>% 
@@ -743,6 +742,9 @@ child_ica %>%
   ungroup() %>% 
   summarize(r = cor(mother_enrollment, avg_learning))
 ```
+
+##### Father's Education and Children Learning Level by District
+
 ```{r}
 child_ica %>% 
   filter(PR009 != "NA", PR004 != "NA") %>% 
@@ -762,6 +764,7 @@ child_ica %>%
   summarize(r = cor(father_enrollment, avg_learning))
 ```
 
+##### Hunza. Age, Learning Level, Mother's Education, 
 
 ```{r}
 child_ica %>% 
@@ -772,6 +775,8 @@ child_ica %>%
   geom_line(aes(C001, avg_learning))
 ```
 
+##### Hunza. Age, Learning Level, Father's Education
+
 ```{r}
 child_ica %>% 
   filter(PR009 != "NA", PR004 != "NA", C003 != "NA", DID == 266, C001 != "NA") %>% 
@@ -780,6 +785,8 @@ child_ica %>%
   ggplot(aes(C001, avg_learning, group = PR009, color = factor(PR009))) +
   geom_line(aes(C001, avg_learning))
 ```
+
+##### Gilgit-Baltistan. Age, Learning Level, Mother's Education
 
 ```{r}
 child_ica %>% 
@@ -796,6 +803,8 @@ child_ica %>%
   facet_wrap(.~DID)
 ```
 
+##### Gilgit-Baltistan. Age, Learning Level, Father's Education
+
 ```{r}
 child_ica %>% 
   filter(PR009 != "NA", 
@@ -811,6 +820,7 @@ child_ica %>%
   facet_wrap(.~DID)
 ```
 
+##### Gilgit-Baltistan. Age, Enrollment, Mother's Education
 
 ```{r}
 child_ica %>% 
@@ -827,6 +837,8 @@ child_ica %>%
   facet_wrap(.~DID)
 ```
 
+##### Gilgit-Baltistan. age, enrollment, father's education
+
 ```{r}
 child_ica %>%
   filter(PR009 != "NA", 
@@ -842,6 +854,45 @@ child_ica %>%
   facet_wrap(.~DID)
 ```
 
+##### mothers education level
+
+```{r}
+child_ica %>% 
+  filter(PR004 != "NA", PR009 != "NA", C010 != "NA", C002 != "NA") %>% 
+  ggplot(aes(PR005)) +
+  geom_histogram(stat = "count") +
+  coord_flip()
+```
+
+###### summary
+
+```{r}
+child_ica %>% 
+  ggplot(aes(PR006)) +
+  geom_histogram(stat = "count") +
+  coord_flip()
+```
+
+##### fathers education level
+
+```{r}
+child_ica %>% 
+  filter(PR004 != "NA", PR009 != "NA", C010 != "NA", C002 != "NA") %>%
+  ggplot(aes(PR010)) +
+  geom_histogram(stat = "count") +
+  coord_flip()
+```
+###### summary
+```{r}
+child_ica %>% 
+  ggplot(aes(PR011)) +
+  geom_histogram(stat = "count") +
+  coord_flip()
+```
+
+
+##### mothers education level by region
+
 ```{r}
 child_ica %>%
   group_by(DID, PR006) %>% 
@@ -853,34 +904,8 @@ child_ica %>%
 ```
 
 
+##### Mother enrollment by district
 
-### Child, Household
-```{r}
-child_ica %>% left_join(house, by = "HHID") %>% 
-  filter(DID.x == 266) %>% 
-  ggplot(aes(H002.x)) +
-  geom_histogram(aes(H002.x), stat = "count")
-```
-
-```{r}
-child_ica %>% 
-  ggplot(aes(x = factor(DID), y = factor(H002), fill = factor(H002))) +
-  geom_bar(aes(x = factor(DID), y = factor(H002)), stat = "identity", position = "fill") +
-  facet_grid(.~RID, scales = "free") +
-  facet_wrap(.~RID, scales = "free") +
-  theme(axis.text.x = element_text(angle = 90, size = 7, hjust = 1)) +
-  coord_cartesian(ylim = c(0,1), clip = "off", expand = FALSE)
-
-```
-
-```{r}
-child_ica %>% 
-  filter(C003 != "NA", RID == 6) %>% 
-  group_by(DID, H002) %>% 
-  mutate(avg_enrollment = mean(C003 == 3)) %>% 
-  ggplot(aes(factor(DID), avg_enrollment, group = H002, fill = factor(H002))) +
-  geom_col(position = "dodge")
-```
 
 ```{r}
 child_ica %>% 
@@ -892,7 +917,7 @@ child_ica %>%
   scale_shape_manual(values = 0:8)
 ```
 
-#### Average mother education experience 
+##### Gilgit-Baltistan. Average mother education experience, House type
 
 ```{r}
 child_ica %>% 
@@ -903,91 +928,54 @@ child_ica %>%
   geom_violin()
 ```
 
-
-
-#### How much are mother and father educated?
+##### Hunza. father enroll ratio
 
 ```{r}
 child_ica %>% 
-  filter(PR004 != "NA", PR009 != "NA", C010 != "NA", C002 != "NA") %>% 
-  ggplot(aes(PR005)) +
-  geom_histogram(stat = "count") +
-  coord_flip()
+  filter(DID == 266, !is.na(PR009)) %>% 
+  summarize(father_edu_ratio = sum(PR009 == -1)/length(PR009))
 ```
+
+##### father enroll ratio
 
 ```{r}
 child_ica %>% 
-  ggplot(aes(PR006)) +
-  geom_histogram(stat = "count") +
-  coord_flip()
+  filter(!is.na(PR009)) %>% 
+  summarize(father_edu_ratio = sum(PR009 == -1)/length(PR009))
 ```
 
+##### father enroll ratio by district
 
 ```{r}
 child_ica %>% 
-  filter(PR004 != "NA", PR009 != "NA", C010 != "NA", C002 != "NA") %>%
-  ggplot(aes(PR010)) +
-  geom_histogram(stat = "count") +
-  coord_flip()
+  filter(!is.na(PR009)) %>% 
+  group_by(DID) %>% 
+  mutate(father_edu_ratio = sum(PR009 == -1)/length(PR009)) %>% 
+  ggplot(aes(factor(DID), father_edu_ratio)) +
+  geom_point()
 ```
+
+##### mother enroll ratio by district
 
 ```{r}
 child_ica %>% 
-  ggplot(aes(PR011)) +
-  geom_histogram(stat = "count") +
-  coord_flip()
-```
-
-
-
-#### Pak, children education stage
-
-```{r}
-child_ica %>% 
-  filter(PR004 != "NA", PR009 != "NA", C010 != "NA", C002 != "NA") %>% 
-  group_by(C005) %>% 
-  summarize(n = n()) %>%
-  mutate(C005 = fct_reorder(C005, n)) %>% 
-  ggplot(aes(C005, n)) +
-  geom_col() +
-  coord_flip()
+  filter(!is.na(PR009), !is.na(PR004)) %>% 
+  group_by(DID) %>% 
+  mutate(mother_edu_ratio = sum(PR004 == -1)/length(PR004)) %>% 
+  ggplot(aes(factor(DID), mother_edu_ratio)) +
+  geom_point()
 ```
 
 
 
 
-#### Hunza, children education stage
-
-```{r}
-child_ica %>% 
-  filter(PR004 != "NA", PR009 != "NA", !is.na(C010), C002 != "NA", !is.na(C005), DID == 266) %>% 
-  group_by(C005) %>% 
-  summarize(n = n()) %>%
-  mutate(C005 = fct_reorder(C005, n)) %>% 
-  ggplot(aes(C005, n)) +
-  geom_col() +
-  coord_flip()
-  
-```
 
 
 
 
-#### Create dummy variale with regard to region
+#### Child, Household
 
-```{r}
-child_ica_dummy <- child_ica
-child_ica_dummy$Panjab <- ifelse(child_ica_dummy$RID == 2, 1, 0)
-child_ica_dummy$Sindh <- ifelse(child_ica_dummy$RID == 3, 1, 0)
-child_ica_dummy$Balochistan <- ifelse(child_ica_dummy$RID == 4, 1, 0)
-child_ica_dummy$Khyber_Pakhtunkhwa <- ifelse(child_ica_dummy$RID == 5, 1, 0)
-child_ica_dummy$Gilgit_Baltistan <- ifelse(child_ica_dummy$RID == 6, 1, 0)
-child_ica_dummy$Azad_Jammu_and_Kashmir <- ifelse(child_ica_dummy$RID == 7, 1, 0)
-child_ica_dummy$Islamabad_ICT <- ifelse(child_ica_dummy$RID == 8, 1, 0)
-child_ica_dummy$Federally_Administrated_Tribal_Areas <- ifelse(child_ica_dummy$RID == 9, 1, 0)
-```
-
-#### Number of Children in a household
+##### Number of Children in a household
 
 ```{r}
 child_ica %>%
@@ -1004,17 +992,37 @@ child_ica %>%
   facet_wrap(.~RID)
 ```
 
-
-#### Enrollment and Gender within Gilgit-Baltistan
+##### house type ratio by region
 
 ```{r}
 child_ica %>% 
-  filter(!is.na(C002), RID == 6) %>% 
-  group_by(DID, C001, C002) %>% 
-  mutate(enroll = mean(C003 == 3)) %>% 
-  ggplot(aes(C001, enroll, group = C002, color = factor(C002))) +
-  geom_line() +
-  facet_wrap(.~DID)
+  ggplot(aes(x = factor(DID), y = factor(H002), fill = factor(H002))) +
+  geom_bar(aes(x = factor(DID), y = factor(H002)), stat = "identity", position = "fill") +
+  facet_grid(.~RID, scales = "free") +
+  facet_wrap(.~RID, scales = "free") +
+  theme(axis.text.x = element_text(angle = 90, size = 7, hjust = 1)) +
+  coord_cartesian(ylim = c(0,1), clip = "off", expand = FALSE)
+
+```
+
+##### Gilgit-Baltistan. house type
+
+```{r}
+child_ica %>% 
+  filter(C003 != "NA", RID == 6) %>% 
+  group_by(DID, H002) %>% 
+  mutate(avg_enrollment = mean(C003 == 3)) %>% 
+  ggplot(aes(factor(DID), avg_enrollment, group = H002, fill = factor(H002))) +
+  geom_col(position = "dodge")
+```
+
+##### Hunza. house type
+
+```{r}
+child_ica %>% left_join(house, by = "HHID") %>% 
+  filter(DID.x == 266) %>% 
+  ggplot(aes(H002.x)) +
+  geom_histogram(aes(H002.x), stat = "count")
 ```
 
 
@@ -1022,24 +1030,198 @@ child_ica %>%
 
 
 
-### Logistic Regression Analysis
+
+#### Average Number of Children in a household
+
+```{r}
+child_ica %>% 
+  group_by(HHID) %>% 
+  mutate(n_children = length(unique(CID))) %>% 
+  ungroup() %>% 
+  group_by(DID) %>% 
+  mutate(avg_n_children = mean(n_children)) %>% 
+  ggplot(aes(DID, avg_n_children, color = factor(RID))) +
+  geom_point()
+```
+
+
+```{r}
+child_ica %>% 
+  ggplot(aes(C005)) +
+  geom_histogram(stat = "count") +
+  coord_flip()
+```
+
+
+##### Hunza, house type
+
+```{r}
+child_ica %>% 
+  filter(DID == 266) %>% 
+  group_by(H002) %>% 
+  summarize(n = n()) %>% 
+  ggplot(aes(H002, n)) +
+  geom_col() +
+  geom_text(aes(label = n), vjust = 1.5, color = "white") +
+  xlab("House Type") +
+  ylab("Number of Households")
+```
+
+##### Hunza, number of children in households 
+
+```{r}
+child_ica%>% 
+  filter(DID == 266) %>% 
+  group_by(HHID) %>%
+  summarize(n = length(unique(CID))) %>% 
+  ungroup() %>% 
+  group_by(n) %>% 
+  summarize(num = n()) %>% 
+  ggplot(aes(factor(n), num)) +
+  geom_col() +
+  geom_text(aes(label = num), vjust = -0.5) +
+  xlab("Number of Children in Each Household") +
+  ylab("Number of Households") 
+  
+```
+
+
+#### Paid-Tuition 
+
+```{r}
+child_ica %>% 
+  filter(PR009 == 0, !is.na(C008a)) %>% 
+  summarize(n = length(unique(CID)),
+            paid_tuition = sum(C008a == -1), 
+            ratio = paid_tuition/n)
+```
+
+##### Hunza
+
+```{r}
+child_ica %>% 
+  filter(DID == 266, PR009 == 0, !is.na(C008a)) %>% 
+  summarize(n = length(unique(CID)),
+            paid_tuition = sum(C008a == -1), 
+            ratio = paid_tuition/n)
+```
+
+
+```{r}
+child_ica %>% 
+  filter(DID == 266, PR004 == 0, !is.na(C008a)) %>% 
+  summarize(n = length(unique(CID)),
+            paid_tuition = sum(C008a == -1), 
+            ratio = paid_tuition/n)
+```
+
+
+##### paid tuition by district
+
+```{r}
+child_ica %>% 
+  group_by(DID) %>% 
+  mutate(avg_paid = mean(C008a == -1, na.rm = TRUE)) %>% 
+  ggplot(aes(DID, avg_paid)) +
+  geom_point()+
+  scale_y_continuous(limits = c(0,1))
+```
+
+```{r}
+child_ica %>% 
+  filter(!is.na(C002)) %>%
+  group_by(DID) %>% 
+  summarize(avg_paid = mean(C008a == -1),
+         female = mean(child_ica %>% filter(C002 == -1) %>% 
+                         group_by(DID) %>% .$C003 == 3),
+         male = mean(child_ica %>% filter(C002 == 0) %>% 
+                       group_by(DID) %>% .$C003 == 3),
+         ratio = female/male)
+
+```
+```{r}
+child_ica %>% 
+  filter(!is.na(C002)) %>%
+  group_by(DID, C002) %>% 
+  summarize(enroll = mean(C003 == 3)) %>% 
+  ungroup() %>% 
+  spread(C002, enroll) %>% 
+  summarize(DID = DID,
+            gender_ratio = .$"-1"/.$"0") %>% 
+  ggplot(aes(DID, gender_ratio)) +
+  geom_point() +
+  scale_y_continuous(limits = c(0,1))
+```
+
+##### correlation b/w paid-tuition and enrollment?
+
+```{r}
+child_ica %>% 
+  filter(!is.na(C002)) %>%
+  group_by(DID) %>% 
+  mutate(paid_tuition = mean(C008a == -1, na.rm = TRUE)) %>% 
+  group_by(DID, C002) %>% 
+  mutate(enroll = mean(C003 == 3)) %>% 
+  ggplot(aes(paid_tuition, enroll)) +
+  geom_point() +
+  geom_smooth() +
+  facet_grid(.~C002)
+  
+```
+
+#### VID
+
+##### Gilgit (DID == 260)
+```{r}
+child_ica %>%
+  filter(!is.na(C002), DID == 260) %>% 
+  group_by(VID, C002) %>% 
+  summarize(avg_enroll = mean(C003 == 3)) %>% 
+  ggplot(aes(VID, avg_enroll, color = factor(C002))) +
+  geom_point()
+```
+
+
+
+### Preparation for Logistic Regression Analysis
 
 #### Making Dataframe With Dummy Variables
+
+
 ```{r}
-child_ica_dummy <- child_ica_dummy %>% filter(!is.na(C002), !is.na(C003), !is.na(PR004), !is.na(PR009))
+child_ica_dummy <- child_ica %>% filter(!is.na(C002), !is.na(C003), !is.na(PR004), !is.na(PR009))
 child_ica_dummy$C002_01 <- ifelse(child_ica_dummy$C002 == -1, 1, 0)
 child_ica_dummy$C003_01 <- ifelse(child_ica_dummy$C003 == 3, 1, 0)
 child_ica_dummy$PR004_01 <- ifelse(child_ica_dummy$PR004 == -1, 1, 0)
 child_ica_dummy$PR009_01 <- ifelse(child_ica_dummy$PR009 == -1, 1, 0)
 child_ica_dummy$PR004_PR009_01 <- ifelse(child_ica_dummy$PR004 == -1 | child_ica_dummy$PR009 == -1, 1, 0)
+```
 
+```{r}
 n_children_in_household <- child_ica_dummy %>% 
   group_by(HHID) %>% 
   summarize(n_children_in_household = length(unique(CID)))
 
 child_ica_dummy <- child_ica_dummy %>% left_join(n_children_in_household)
+
+child_ica_dummy$H002_1_01 <- ifelse(child_ica_dummy$H002 == 1, 1, 0)
+child_ica_dummy$H002_2_01 <- ifelse(child_ica_dummy$H002 == 2, 1, 0)
+child_ica_dummy$H002_3_01 <- ifelse(child_ica_dummy$H002 == 3, 1, 0)
 ```
 
+#### Create dummy variable with regard to region
+
+```{r}
+child_ica_dummy <- child_ica_dummy
+child_ica_dummy$Panjab <- ifelse(child_ica_dummy$RID == 2, 1, 0)
+child_ica_dummy$Sindh <- ifelse(child_ica_dummy$RID == 3, 1, 0)
+child_ica_dummy$Balochistan <- ifelse(child_ica_dummy$RID == 4, 1, 0)
+child_ica_dummy$Khyber_Pakhtunkhwa <- ifelse(child_ica_dummy$RID == 5, 1, 0)
+child_ica_dummy$Gilgit_Baltistan <- ifelse(child_ica_dummy$RID == 6, 1, 0)
+child_ica_dummy$Azad_Jammu_and_Kashmir <- ifelse(child_ica_dummy$RID == 7, 1, 0)
+child_ica_dummy$Islamabad_ICT <- ifelse(child_ica_dummy$RID == 8, 1, 0)
+child_ica_dummy$Federally_Administrated_Tribal_Areas <- ifelse(child_ica_dummy$RID == 9, 1, 0)
+```
 
 
 #### Eliminated NAs
@@ -1085,62 +1267,69 @@ data.frame(original_rows = nrow(child_ica %>% filter(DID == 266)),
 
 
 
+### Generalized Linear Models
 
-#### GLM C003_01 ~ n_children_in_household + PR004_PR009_01 + C002_01
+#### GLM C003_01 ~ n_children_in_household + C002_01 + PR004_PR009_01
 
 ```{r}
-glm_child <- glm(C003_01 ~ n_children_in_household + PR004_PR009_01 + C002_01, family = "binomial", data = child_ica_dummy)
+glm_child <- glm(C003_01 ~ n_children_in_household + C002_01 + PR004_PR009_01, family = "binomial", data = child_ica_dummy)
 
 ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
 
 ```
 
-
-#### within hunza
+##### Hosmer-Lemeshow
 
 ```{r}
-glm_child_hunza <- glm(C003_01 ~ n_children_in_household + PR004_PR009_01 + C002_01, family = "binomial", data = child_ica_dummy %>% filter(DID == 266))
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
+```
+
+#### Hunza. C003_01 ~ n_children_in_household + C002_01 + PR004_PR009_01
+
+```{r}
+glm_child_hunza <- glm(C003_01 ~ n_children_in_household + C002_01 + PR004_PR009_01, family = "binomial", data = child_ica_dummy %>% filter(DID == 266))
 
 ggPredict(glm_child_hunza, se = TRUE, show.summary = TRUE, point = TRUE, colorAsFactor = TRUE)
 ```
-<div>In Hunza, gender difference does not provide much difference on child enrollment. instead, parents education has a huge impact.</div>
+<div></div>
+
+##### Hosmer-Lemeshow
 
 ```{r}
-ggPredict(glm_child_hunza, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE) +
-  coord_cartesian(xlim = c(3,5), ylim = c(0.55, 0.9))
+hoslem.test(x = glm_child_hunza$y, y = fitted(glm_child_hunza))
 ```
 
-#### exponential transformation
+##### exponential transformation
 
 ```{r}
 exp(glm_child_hunza$coefficients)
 ```
 
-#### confidence interval (intercept and coefficient)
+##### confidence interval (intercept and coefficient)
 
 ```{r}
 confint(glm_child_hunza, level = 0.95)
 ```
 
-#### exponential transformation of confidence interval (odds ratio of intercept and coefficient)
+##### exponential transformation of confidence interval (odds ratio of intercept and coefficient)
 
 ```{r}
 exp(confint(glm_child_hunza, level = 0.95))
 ```
 
-#### AIC
+##### AIC
 
 ```{r}
 extractAIC(glm_child_hunza)
 ```
 
-#### BIC
+##### BIC
 
 ```{r}
 extractAIC(glm_child_hunza, k = log(nrow(glm_child_hunza$data)))
 ```
 
-#### effectiveness of explanatory variables
+##### effectiveness of explanatory variables
 
 ```{r}
 glm_child_hunza_null <- glm(C003_01~1, family = "binomial", data = child_ica_dummy %>% filter(DID == 266))
@@ -1148,20 +1337,15 @@ anova <- anova(glm_child_hunza_null, glm_child_hunza, test = "Chisq")
 anova
 ```
 
-#### variables selection
+##### variables selection
 
 ```{r}
 step(glm_child_hunza_null, direction = "both", 
      scope = (~ C001 + C002_01 + PR004_01 + PR009_01))
 
-# step(glm_child_null, direction = "both", 
-#      scope = (~ C001 + C002 + PR004_01 + PR009_01 + 
-#                 Panjab + Sindh + Balochistan + Khyber_Pakhtunkhwa + Gilgit_Baltistan + 
-#                 Azad_Jammu_and_Kashmir + Islamabad_ICT))
-
 ```
 
-#### multicolinearity
+##### multicolinearity
 
 ```{r}
 vif(glm_child_hunza)
@@ -1182,8 +1366,13 @@ ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point
 
 ```
 
+##### Hosmer-Lemeshow
 
-#### within hunza
+```{r}
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
+```
+
+#### Hunza. C003_01 ~ n_children_in_household + H002 + PR004_PR009_01
 
 ```{r}
 glm_child_hunza <- glm(C003_01 ~ n_children_in_household + H002 + PR004_PR009_01, family = "binomial", data = child_ica_dummy %>% filter(DID == 266))
@@ -1192,42 +1381,43 @@ ggPredict(glm_child_hunza, se = TRUE, show.summary = TRUE, point = TRUE, colorAs
 ```
 <div></div>
 
+##### Hosmer-Lemeshow
+
 ```{r}
-ggPredict(glm_child_hunza, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE) +
-  coord_cartesian(xlim = c(3,5), ylim = c(0.55, 0.9))
+hoslem.test(x = glm_child_hunza$y, y = fitted(glm_child_hunza))
 ```
 
-#### exponential transformation
+##### exponential transformation
 
 ```{r}
 exp(glm_child_hunza$coefficients)
 ```
 
-#### confidence interval (intercept and coefficient)
+##### confidence interval (intercept and coefficient)
 
 ```{r}
 confint(glm_child_hunza, level = 0.95)
 ```
 
-#### exponential transformation of confidence interval (odds ratio of intercept and coefficient)
+##### exponential transformation of confidence interval (odds ratio of intercept and coefficient)
 
 ```{r}
 exp(confint(glm_child_hunza, level = 0.95))
 ```
 
-#### AIC
+##### AIC
 
 ```{r}
 extractAIC(glm_child_hunza)
 ```
 
-#### BIC
+##### BIC
 
 ```{r}
 extractAIC(glm_child_hunza, k = log(nrow(glm_child_hunza$data)))
 ```
 
-#### effectiveness of explanatory variables
+##### effectiveness of explanatory variables
 
 ```{r}
 glm_child_hunza_null <- glm(C003_01~1, family = "binomial", data = child_ica_dummy %>% filter(DID == 266))
@@ -1235,7 +1425,7 @@ anova <- anova(glm_child_hunza_null, glm_child_hunza, test = "Chisq")
 anova
 ```
 
-#### variables selection
+##### variables selection
 
 ```{r}
 step(glm_child_hunza_null, direction = "both", 
@@ -1248,7 +1438,7 @@ step(glm_child_hunza_null, direction = "both",
 
 ```
 
-#### multicolinearity
+##### multicolinearity
 
 ```{r}
 vif(glm_child_hunza)
@@ -1271,8 +1461,13 @@ ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point
 
 ```
 
+##### Hosmer-Lemeshow
 
-#### within hunza
+```{r}
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
+```
+
+#### Hunza. C003_01 ~ n_children_in_household + PR004_PR009_01 + H002
 
 ```{r}
 glm_child_hunza <- glm(C003_01 ~ n_children_in_household + PR004_PR009_01 + H002, family = "binomial", data = child_ica_dummy %>% filter(DID == 266))
@@ -1280,6 +1475,27 @@ glm_child_hunza <- glm(C003_01 ~ n_children_in_household + PR004_PR009_01 + H002
 ggPredict(glm_child_hunza, se = TRUE, show.summary = TRUE, point = TRUE, colorAsFactor = TRUE)
 ```
 
+##### Hosmer-Lemeshow
+
+```{r}
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
+```
+
+
+#### Multicolinearity house type and parent edu?
+
+```{r}
+child_ica_dummy %>% 
+  group_by(H002) %>% 
+  mutate(n_parents = length(PR004_PR009_01))%>% 
+  ggplot(aes(H002, n_parents, fill = factor(PR004_PR009_01))) +
+  geom_col(position = "stack") +
+  xlab("Type of Houses") +
+  ylab("Number of Parents") +
+  labs(fill = "Parents Education\n(at least one of them, primary or more)")
+
+```
+<div>The more educated the parents are, the better house they are living in.</div>
 
 
 
@@ -1297,52 +1513,62 @@ ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point
 
 ```
 
+##### Hosmer-Lemeshow
 
-#### within hunza
+```{r}
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
+```
+
+
+
+#### Hunza. C003_01 ~ n_children_in_household + H002 + C002_01
 
 ```{r}
 glm_child_hunza <- glm(C003_01 ~ n_children_in_household + H002 + C002_01, family = "binomial", data = child_ica_dummy %>% filter(DID == 266))
 
 ggPredict(glm_child_hunza, se = TRUE, show.summary = TRUE, point = TRUE, colorAsFactor = TRUE)
 ```
-<div></div>
+
+##### Hosmer-Lemeshow
 
 ```{r}
-ggPredict(glm_child_hunza, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE) +
-  coord_cartesian(xlim = c(3,5), ylim = c(0.55, 0.9))
+hoslem.test(x = glm_child_hunza$y, y = fitted(glm_child_hunza))
 ```
+<div></div>
 
-#### exponential transformation
+
+
+##### exponential transformation
 
 ```{r}
 exp(glm_child_hunza$coefficients)
 ```
 
-#### confidence interval (intercept and coefficient)
+##### confidence interval (intercept and coefficient)
 
 ```{r}
 confint(glm_child_hunza, level = 0.95)
 ```
 
-#### exponential transformation of confidence interval (odds ratio of intercept and coefficient)
+##### exponential transformation of confidence interval (odds ratio of intercept and coefficient)
 
 ```{r}
 exp(confint(glm_child_hunza, level = 0.95))
 ```
 
-#### AIC
+##### AIC
 
 ```{r}
 extractAIC(glm_child_hunza)
 ```
 
-#### BIC
+##### BIC
 
 ```{r}
 extractAIC(glm_child_hunza, k = log(nrow(glm_child_hunza$data)))
 ```
 
-#### effectiveness of explanatory variables
+##### effectiveness of explanatory variables
 
 ```{r}
 glm_child_hunza_null <- glm(C003_01~1, family = "binomial", data = child_ica_dummy %>% filter(DID == 266))
@@ -1350,7 +1576,7 @@ anova <- anova(glm_child_hunza_null, glm_child_hunza, test = "Chisq")
 anova
 ```
 
-#### variables selection
+##### variables selection
 
 ```{r}
 step(glm_child_hunza_null, direction = "both", 
@@ -1363,11 +1589,19 @@ step(glm_child_hunza_null, direction = "both",
 
 ```
 
-#### multicolinearity
+##### multicolinearity
 
 ```{r}
 vif(glm_child_hunza)
 ```
+
+
+
+
+
+
+
+
 
 
 #### GLM C003_01 ~ n_children_in_household + C002_01 + H002
@@ -1379,8 +1613,15 @@ ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point
 
 ```
 
+##### Hosmer-Lemeshow
 
-#### within hunza
+```{r}
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
+```
+
+
+
+#### Hunza. C003_01 ~n_children_in_household + C002_01 + H002
 
 ```{r}
 glm_child_hunza <- glm(C003_01 ~n_children_in_household + C002_01 + H002, family = "binomial", data = child_ica_dummy %>% filter(DID == 266))
@@ -1388,48 +1629,17 @@ glm_child_hunza <- glm(C003_01 ~n_children_in_household + C002_01 + H002, family
 ggPredict(glm_child_hunza, se = TRUE, show.summary = TRUE, point = TRUE, colorAsFactor = TRUE)
 ```
 
-
-
-
-
-
-
-
+##### Hosmer-Lemeshow
 
 ```{r}
-glm_child_hunza <- glm(C003_01 ~ C001 + C002_01 + PR009_01, family = "binomial", data = child_ica_dummy %>% filter(DID == 266))
-
-ggPredict(glm_child_hunza, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+hoslem.test(x = glm_child_hunza$y, y = fitted(glm_child_hunza))
 ```
 
-```{r}
-ggPredict(glm_child_hunza, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE) +
-  coord_cartesian(xlim = c(3,5), ylim = c(0.55, 0.9))
-```
 
-```{r}
-glm_child_hunza <- glm(C003_01 ~ C001 + C002_01 + PR004_01, family = "binomial", data = child_ica_dummy %>% filter(DID == 266))
 
-ggPredict(glm_child_hunza, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
-```
 
-#### multi-colinearity?
 
-```{r}
-child_ica_dummy %>% 
-  filter(DID == 266) %>% 
-  group_by(HHID) %>% 
-  summarize(avg = length(unique(PRID)))
-
-child_ica_dummy %>% 
-  filter(DID == 266) %>% 
-  group_by(CID) %>% 
-  summarize(avg = (PR004_01 + PR009_01)/2) %>% 
-  ggplot(aes(factor(avg))) +
-  geom_histogram(stat = "count") 
-```
-
-#### Districts in Gilgit-Baltistan
+#### C002_01 chi Districts in Gilgit-Baltistan
 
 ```{r}
 child_ica_dummy %>% filter(RID == 6) %>% summarize(unique(DID))
@@ -1443,14 +1653,16 @@ data.frame(result = anova$`Pr(>Chi)`[2], DID = dist, chi_0.05 = anova$`Pr(>Chi)`
 
 <div>Within Gilgit-Baltistan, 3 of 7 districts including Hunza has Chi > 0.05</div>
 
-#### Logistic Regression and Anova for All Districts
+
+
+#### GLM C003_01 ~ C002_01 and Anova for All Districts
 
 ```{r Logistic Regression for All Districts}
-id <- child_ica_dummy %>% summarize(unique(DID))
-id <- as.matrix(id)
-id <- as.numeric(id[,1])
+DID_unique <- child_ica_dummy %>% summarize(unique(DID))
+DID_unique <- as.matrix(DID_unique)
+DID_unique <- as.numeric(DID_unique[,1])
 
-dist_logist <- sapply(id, function(dist){
+dist_logist <- sapply(DID_unique, function(dist){
   
   glm_child_dist <- glm(C003_01 ~ C002_01, 
                         family = "binomial", 
@@ -1485,9 +1697,7 @@ anova_dist %>%
             ratio_0.1 = sum(as.numeric(chi_largerThan_0.1))/length(chi_largerThan_0.1))
 ```
 
-
-
-#### DIDs with chi >= 0.05
+##### DIDs with chi >= 0.05
 
 ```{r}
 anova_dist %>% 
@@ -1495,7 +1705,7 @@ anova_dist %>%
   select(-chi_largerThan_0.1)
 ```
 
-#### DID chi > 0.05
+##### DID chi > 0.05
 
 ```{r}
 DID_chi_0.05 <- anova_dist %>% 
@@ -1505,8 +1715,7 @@ DID_chi_0.05 <- anova_dist %>%
 DID_chi_0.05
 ```
 
-
-#### DIDs with chi >= 0.1
+##### DIDs with chi >= 0.1
 
 ```{r}
 anova_dist %>% 
@@ -1514,7 +1723,7 @@ anova_dist %>%
   select(-chi_largerThan_0.05)
 ```
 
-#### DID chi > 0.1
+##### DID chi > 0.1
 
 ```{r}
 DID_chi_0.1 <- anova_dist %>% 
@@ -1525,6 +1734,7 @@ DID_chi_0.1 <- anova_dist %>%
 
 
 
+##### DID with C002 == -1, chi > 0.05
 
 ```{r}
 child %>% 
@@ -1539,6 +1749,9 @@ child %>%
   geom_point(aes(color = RID)) +
   geom_text(aes(label = DID), nudge_x = 5, check_overlap = TRUE)
 ```
+
+##### C001 & enroll ; DID chi > 0.1
+
 ```{r}
 child %>% 
   filter(DID == DID_chi_0.1) %>%
@@ -1551,127 +1764,87 @@ child %>%
 ```
 
 
-#### education stages
+
+
+
+
+
+
+
+#### GLM C003_01 ~ n_children_in_household + H002 + C002_01 + as.factor(DID)
 
 ```{r}
-child_ica_dummy %>% 
-  group_by(DID) %>% 
-  mutate(n = length(C003),
-            dropout = sum(C003 == 2),
-            dropout_ratio = mean(C003 == 2),
-            never = sum(C003 == 1),
-            never_ratio = mean(C003 == 1)) %>% 
-  ggplot(aes(DID, never_ratio, color = factor(RID))) +
-  geom_point()
+glm_child <- glm(C003_01 ~ n_children_in_household + H002 + C002_01 + as.factor(DID), family = "binomial", data = child_ica_dummy)
+
+ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+
 ```
 
-#### Average Number of Children in a household
+##### Hosmer-Lemeshow
 
 ```{r}
-child_ica %>% 
-  group_by(HHID) %>% 
-  mutate(n_children = length(unique(CID))) %>% 
-  ungroup() %>% 
-  group_by(DID) %>% 
-  mutate(avg_n_children = mean(n_children)) %>% 
-  ggplot(aes(DID, avg_n_children, color = factor(RID))) +
-  geom_point()
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
 ```
 
+#### GLM C003_01 ~ n_children_in_household + PR004_PR009_01 + C002_01 + as.factor(DID)
 
 ```{r}
-child_ica %>% 
-  ggplot(aes(C005)) +
-  geom_histogram(stat = "count") +
-  coord_flip()
-```
-```{r}
-unique(child_ica$C005)
+glm_child <- glm(C003_01 ~ n_children_in_household + PR004_PR009_01 + C002_01 + as.factor(DID), family = "binomial", data = child_ica_dummy)
+
+ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
 ```
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#### fit the model
+##### Hosmer-Lemeshow
 
 ```{r}
-glm_child <- glm(C003_01~ C001 + C002_01 + PR004_01, family = "binomial", data = child_ica_dummy)
-
-# glm_child <- glm(enroll01~ C001 + C002 + PR004 + PR009 +
-#                    Panjab + Sindh + Balochistan + Khyber_Pakhtunkhwa + 
-#                    Gilgit_Baltistan + Azad_Jammu_and_Kashmir + Islamabad_ICT, 
-#                  family = "binomial", data = child_ica_dummy %>% filter(!is.na(C002)))
-summary(glm_child)
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
 ```
 
-#### exponential transformation
+##### exponential transformation
 
 ```{r}
 exp(glm_child$coefficients)
 ```
 
-#### confidence interval (intercept and coefficient)
+##### confidence interval (intercept and coefficient)
 
 ```{r}
-confint(glm_child, level = 0.95)
+# confint(glm_child, level = 0.95)
 ```
 
-#### exponential transformation of confidence interval (odds ratio of intercept and coefficient)
+##### exponential transformation of confidence interval (odds ratio of intercept and coefficient)
 
 ```{r}
-exp(confint(glm_child, level = 0.95))
+# exp(confint(glm_child, level = 0.95))
 ```
 
-#### AIC
+##### AIC
 
 ```{r}
 extractAIC(glm_child)
 ```
 
-#### BIC
+##### BIC
 
 ```{r}
 extractAIC(glm_child, k = log(nrow(glm_child$data)))
 ```
 
-#### effectiveness of explanatory variables
+##### effectiveness of explanatory variables
 
 ```{r}
 glm_child_null <- glm(C003_01~1, family = "binomial", data = child_ica_dummy)
 anova(glm_child_null, glm_child, test = "Chisq")
 ```
 
-#### variables selection
+##### variables selection
 
 ```{r}
-step(glm_child_null, direction = "both", 
-     scope = (~ C001 + C002_01 + PR004_01 + PR009_01))
-
 # step(glm_child_null, direction = "both", 
-#      scope = (~ C001 + C002 + PR004_01 + PR009_01 + 
-#                 Panjab + Sindh + Balochistan + Khyber_Pakhtunkhwa + Gilgit_Baltistan + 
-#                 Azad_Jammu_and_Kashmir + Islamabad_ICT))
-
+#      scope = (~ n_children_in_household + PR004_PR009_01 + C002_01 + as.factor(DID)))
 ```
 
-#### multicolinearity
+##### multicolinearity
 
 ```{r}
 vif(glm_child)
@@ -1679,134 +1852,252 @@ vif(glm_child)
 ```
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#### Paid-Tuition helps?
+##### Districts with P-Values Bigger Than 0.05 and Coefficient
 
 ```{r}
-child_ica %>% 
-  filter(PR009 == 0, !is.na(C008a)) %>% 
-  summarize(n = length(unique(CID)),
-            paid_tuition = sum(C008a == -1), 
-            ratio = paid_tuition/n)
+glm_summary <- glm_child %>% summary()
+glm_coef <- as.data.frame(glm_summary$coefficients)
+glm_coef %>% filter(`Pr(>|z|)` > 0.05)
 ```
 
-#### Hunza
+##### Districts with P-Values Bigger Than 0.05
 
 ```{r}
-child_ica %>% 
-  filter(DID == 266, PR009 == 0, !is.na(C008a)) %>% 
-  summarize(n = length(unique(CID)),
-            paid_tuition = sum(C008a == -1), 
-            ratio = paid_tuition/n)
+glm_coef %>% filter(`Pr(>|z|)` > 0.05) %>% t() %>% .[-c(1:5),]
+```
+```{r}
+dists_not_fit <-  c(148, 151, 162, 163, 178, 181, 193, 249, 260, 265, 269, 270, 271, 272, 274, 276, 277)
+child_ica_dummy %>% filter(DID == dists_not_fit) %>% select(DID, DNAME) %>% summarize(DID = unique(DID), DNAME = unique(DNAME))
+```
+
+##### Districts with P-Values Bigger Than 0.001 and Coefficient
+
+```{r}
+glm_summary <- glm_child %>% summary()
+glm_coef <- as.data.frame(glm_summary$coefficients)
+glm_coef %>% filter(`Pr(>|z|)` > 0.001)
+```
+
+##### Districts with P-Values Bigger Than 0.001
+
+```{r}
+glm_coef %>% filter(`Pr(>|z|)` > 0.001) %>% t() %>% .[-c(1:5),]
+```
+```{r}
+dists_not_fit <-  c(148, 151, 152, 158, 162, 163, 173, 178, 181, 185, 193, 199, 232, 238, 245, 249, 256, 260, 265, 267, 269, 270, 271, 272, 273, 274, 276, 277)
+child_ica_dummy %>% filter(DID == dists_not_fit) %>% select(DID, DNAME) %>% summarize(DID = unique(DID), DNAME = unique(DNAME))
 ```
 
 
+
+#### Dists_not_fit. GLM C003_01 ~ n_children_in_household + PR004_PR009_01 + C002_01
+
+##### All of dists_not_fit
+
 ```{r}
-child_ica %>% 
-  filter(DID == 266, PR004 == 0, !is.na(C008a)) %>% 
-  summarize(n = length(unique(CID)),
-            paid_tuition = sum(C008a == -1), 
-            ratio = paid_tuition/n)
+glm_child <- glm(C003_01 ~ n_children_in_household + PR004_PR009_01 + C002_01 + as.factor(VID), family = "binomial", data = child_ica_dummy %>% filter(DID %in% dists_not_fit))
+
+ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+```
+
+##### Hosmer-Lemeshow
+
+```{r}
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
 ```
 
 
+##### 148
+
 ```{r}
-child_ica %>% 
-  filter(DID == 266, !is.na(PR009)) %>% 
-  summarize(father_edu_ratio = sum(PR009 == -1)/length(PR009))
-```
-```{r}
-child_ica %>% 
-  filter(!is.na(PR009)) %>% 
-  summarize(father_edu_ratio = sum(PR009 == -1)/length(PR009))
+glm_child <- glm(C003_01 ~ n_children_in_household + PR004_PR009_01 + C002_01, family = "binomial", data = child_ica_dummy %>% filter(DID == 148))
+
+ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
 ```
 
+##### Hosmer-Lemeshow
+
 ```{r}
-child_ica %>% 
-  filter(!is.na(PR009)) %>% 
-  group_by(DID) %>% 
-  mutate(father_edu_ratio = sum(PR009 == -1)/length(PR009)) %>% 
-  ggplot(aes(factor(DID), father_edu_ratio)) +
-  geom_point()
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
 ```
 
+##### 151
+
 ```{r}
-child_ica %>% 
-  filter(!is.na(PR009), !is.na(PR004)) %>% 
-  group_by(DID) %>% 
-  mutate(mother_edu_ratio = sum(PR004 == -1)/length(PR004)) %>% 
-  ggplot(aes(factor(DID), mother_edu_ratio)) +
-  geom_point()
+glm_child <- glm(C003_01 ~ n_children_in_household + PR004_PR009_01 + C002_01, family = "binomial", data = child_ica_dummy %>% filter(DID == 151))
+
+ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+```
+
+##### Hosmer-Lemeshow
+
+```{r}
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
+```
+
+##### 260
+
+```{r}
+glm_child <- glm(C003_01 ~ n_children_in_household + PR004_PR009_01 + C002_01, family = "binomial", data = child_ica_dummy %>% filter(DID == 260))
+
+ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+```
+
+##### Hosmer-Lemeshow
+
+```{r}
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
+```
+
+##### 260, VID
+
+```{r}
+glm_child <- glm(C003_01 ~ n_children_in_household + PR004_PR009_01 + C002_01 + factor(VID), family = "binomial", data = child_ica_dummy %>% filter(DID == 260))
+
+ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+```
+
+##### Hosmer-Lemeshow
+
+```{r}
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
 ```
 
 
-```{r}
-child_ica %>% 
-  group_by(DID) %>% 
-  mutate(avg_paid = mean(C008a == -1, na.rm = TRUE)) %>% 
-  ggplot(aes(DID, avg_paid)) +
-  geom_point()+
-  scale_y_continuous(limits = c(0,1))
-```
+
+#### Without dists_not_fit. GLM C003_01 ~ n_children_in_household + PR004_PR009_01 + C002_01 + as.factor(DID)
 
 ```{r}
-child_ica %>% 
-  filter(!is.na(C002)) %>%
-  group_by(DID) %>% 
-  summarize(avg_paid = mean(C008a == -1),
-         female = mean(child_ica %>% filter(C002 == -1) %>% 
-                         group_by(DID) %>% .$C003 == 3),
-         male = mean(child_ica %>% filter(C002 == 0) %>% 
-                       group_by(DID) %>% .$C003 == 3),
-         ratio = female/male)
+glm_child <- glm(C003_01 ~ n_children_in_household + PR004_PR009_01 + C002_01 + as.factor(DID), family = "binomial", data = child_ica_dummy %>% filter(!DID %in% dists_not_fit))
+
+ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
 
 ```
+
+##### Hosmer-Lemeshow
+
 ```{r}
-child_ica %>% 
-  filter(!is.na(C002)) %>%
-  group_by(DID, C002) %>% 
-  summarize(enroll = mean(C003 == 3)) %>% 
-  ungroup() %>% 
-  spread(C002, enroll) %>% 
-  summarize(DID = DID,
-            gender_ratio = .$"-1"/.$"0") %>% 
-  ggplot(aes(DID, gender_ratio)) +
-  geom_point() +
-  scale_y_continuous(limits = c(0,1))
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
 ```
 
-#### correlation b/w paid-tuition and enrollment?
+
+
+
+
+
+
+
+
+
+
+#### fit the momdel for every districts using apply function
+
+#### All Districts. C003_01 ~ n_children_in_household PR004_PR009_01 + C002_01
 
 ```{r}
-child_ica %>% 
-  filter(!is.na(C002)) %>%
-  group_by(DID) %>% 
-  mutate(paid_tuition = mean(C008a == -1, na.rm = TRUE)) %>% 
-  group_by(DID, C002) %>% 
-  mutate(enroll = mean(C003 == 3)) %>% 
-  ggplot(aes(paid_tuition, enroll)) +
-  geom_point() +
-  geom_smooth() +
-  facet_grid(.~C002)
+fit_all <- sapply(DID_unique, function(id){
   
+  glm_child <- glm(C003_01 ~ n_children_in_household + PR004_PR009_01 + C002_01, 
+                   family = "binomial", data = child_ica_dummy %>% filter(DID == id))
+  
+  # ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+  
+  hoslem <- hoslem.test(x = glm_child$y, y = fitted(glm_child))
+  data.frame(id, hoslem["p.value"])
+}) %>% t()
+
+fit_all <- fit_all %>% as.data.frame()
+
+fit_all$id <- fit_all$id %>% as.numeric()
+fit_all$p.value <- fit_all$p.value %>% as.numeric()
+
+fit_all
+```
+
+##### Districts whose model is not fitted well
+
+```{r}
+fit_all %>% 
+  filter(p.value < 0.05)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### memo
+
+#### fit the model
+
+```{r}
+glm_child <- glm(C003_01~ C001 + C002_01 + PR004_01, family = "binomial", data = child_ica_dummy)
+
+summary(glm_child)
+```
+
+##### exponential transformation
+
+```{r}
+exp(glm_child$coefficients)
+```
+
+##### confidence interval (intercept and coefficient)
+
+```{r}
+confint(glm_child, level = 0.95)
+```
+
+##### exponential transformation of confidence interval (odds ratio of intercept and coefficient)
+
+```{r}
+exp(confint(glm_child, level = 0.95))
+```
+
+##### AIC
+
+```{r}
+extractAIC(glm_child)
+```
+
+##### BIC
+
+```{r}
+extractAIC(glm_child, k = log(nrow(glm_child$data)))
+```
+
+##### effectiveness of explanatory variables
+
+```{r}
+glm_child_null <- glm(C003_01~1, family = "binomial", data = child_ica_dummy)
+anova(glm_child_null, glm_child, test = "Chisq")
+```
+
+##### variables selection
+
+```{r}
+step(glm_child_null, direction = "both", 
+     scope = (~ C001 + C002_01 + PR004_01 + PR009_01))
+```
+
+##### multicolinearity
+
+```{r}
+vif(glm_child)
+
 ```
 
 
