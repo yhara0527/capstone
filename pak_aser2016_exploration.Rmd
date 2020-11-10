@@ -5,8 +5,8 @@ date: "2020/10/1"
 output:
   html_document:
     df_print: paged
-  word_document: default
-  pdf_document: default
+    toc: true
+    toc_float: true
 ---
 
 ```{r setup, include=FALSE}
@@ -488,9 +488,6 @@ ica %>%
   geom_point(data = child_ica %>% group_by(DID) %>% 
                mutate(avg_enroll = mean(C003 == 3)), 
              aes(x, y, label = avg_enroll, color = avg_enroll))
-  # geom_text(data = child_ica%>% group_by(DID) %>% 
-  #             mutate(avg_enroll = mean(C003 == 3)), 
-  #           aes(x, y, avg_enroll), check_overlap = TRUE, nudge_y = 0.5)
 ```
 
 #### Average enrollment rate of female children
@@ -657,7 +654,7 @@ child_ica %>%
   facet_wrap(.~DID)
 ```
 
-##### Education Etages
+##### Education Stages
 
 ```{r}
 child_ica %>% 
@@ -670,6 +667,66 @@ child_ica %>%
   ggplot(aes(DID, never_ratio, color = factor(RID))) +
   geom_point()
 ```
+
+##### Drop-Out C003 == 2
+
+```{r}
+child_ica %>% 
+  group_by(DID) %>% 
+  summarize(dropout = mean(C003 == 2)) %>% 
+  ggplot(aes(factor(DID), dropout)) +
+  geom_point()
+```
+
+```{r}
+child_ica %>% 
+  filter(!is.na(C002)) %>% 
+  group_by(DID, C002) %>% 
+  summarize(dropout = mean(C003 == 2)) %>% 
+  ggplot(aes(factor(DID), dropout, color = factor(C002))) +
+  geom_point()
+```
+
+##### Never Enrolled C003 == 1
+
+```{r}
+child_ica %>% 
+  group_by(DID) %>% 
+  summarize(neverEnr = mean(C003 == 1)) %>% 
+  ggplot(aes(factor(DID), neverEnr)) +
+  geom_point()
+```
+
+
+```{r}
+child_ica %>% 
+  filter(!is.na(C002)) %>% 
+  group_by(DID, C002) %>% 
+  summarize(neverEnr = mean(C003 == 1)) %>% 
+  ggplot(aes(factor(DID), neverEnr, color = factor(C002))) +
+  geom_point()
+```
+
+##### Hunza. Never Enrolled C003_1_01
+
+```{r}
+child_ica %>% 
+  filter(!is.na(C002)) %>% 
+  filter(DID == 266) %>% 
+  summarize(n_neverEnr = sum(C003 == 1), 
+            ratio = mean(C003 == 1))
+
+```
+
+```{r}
+child_ica %>% 
+  filter(DID == 266, !is.na(C002)) %>%
+  group_by(C002) %>% 
+  summarize(n_neverEnr = sum(C003 == 1), 
+            ratio = mean(C003 == 1))
+```
+
+
 
 
 #### Child & Parents
@@ -837,7 +894,7 @@ child_ica %>%
   facet_wrap(.~DID)
 ```
 
-##### Gilgit-Baltistan. age, enrollment, father's education
+##### Gilgit-Baltistan. Age, Enrollment, Father's Education
 
 ```{r}
 child_ica %>%
@@ -854,7 +911,7 @@ child_ica %>%
   facet_wrap(.~DID)
 ```
 
-##### mothers education level
+##### Mothers Education Level
 
 ```{r}
 child_ica %>% 
@@ -864,7 +921,7 @@ child_ica %>%
   coord_flip()
 ```
 
-###### summary
+###### Summary
 
 ```{r}
 child_ica %>% 
@@ -873,7 +930,7 @@ child_ica %>%
   coord_flip()
 ```
 
-##### fathers education level
+##### Fathers Education Level
 
 ```{r}
 child_ica %>% 
@@ -882,7 +939,7 @@ child_ica %>%
   geom_histogram(stat = "count") +
   coord_flip()
 ```
-###### summary
+###### Summary
 ```{r}
 child_ica %>% 
   ggplot(aes(PR011)) +
@@ -891,7 +948,7 @@ child_ica %>%
 ```
 
 
-##### mothers education level by region
+##### Mothers Education Level by Region
 
 ```{r}
 child_ica %>%
@@ -904,7 +961,7 @@ child_ica %>%
 ```
 
 
-##### Mother enrollment by district
+##### Mother Enrollment by District
 
 
 ```{r}
@@ -917,7 +974,7 @@ child_ica %>%
   scale_shape_manual(values = 0:8)
 ```
 
-##### Gilgit-Baltistan. Average mother education experience, House type
+##### Gilgit-Baltistan. Average Mother Education Experience, House Type
 
 ```{r}
 child_ica %>% 
@@ -928,7 +985,7 @@ child_ica %>%
   geom_violin()
 ```
 
-##### Hunza. father enroll ratio
+##### Hunza. Father Enroll Ratio
 
 ```{r}
 child_ica %>% 
@@ -936,7 +993,7 @@ child_ica %>%
   summarize(father_edu_ratio = sum(PR009 == -1)/length(PR009))
 ```
 
-##### father enroll ratio
+##### Father Enroll Ratio
 
 ```{r}
 child_ica %>% 
@@ -944,7 +1001,7 @@ child_ica %>%
   summarize(father_edu_ratio = sum(PR009 == -1)/length(PR009))
 ```
 
-##### father enroll ratio by district
+##### Father Enroll ratio by district
 
 ```{r}
 child_ica %>% 
@@ -1191,10 +1248,21 @@ child_ica %>%
 ```{r}
 child_ica_dummy <- child_ica %>% filter(!is.na(C002), !is.na(C003), !is.na(PR004), !is.na(PR009))
 child_ica_dummy$C002_01 <- ifelse(child_ica_dummy$C002 == -1, 1, 0)
-child_ica_dummy$C003_01 <- ifelse(child_ica_dummy$C003 == 3, 1, 0)
+child_ica_dummy$C003_01 <- ifelse(child_ica_dummy$C003 == 3, 1, 0)     # currently-enrolled
+child_ica_dummy$C003_1_01 <- ifelse(child_ica_dummy$C003 == 1, 1, 0)   # never-enrolled
+child_ica_dummy$C003_2_01 <- ifelse(child_ica_dummy$C003 == 2, 1, 0)   # drop-out
 child_ica_dummy$PR004_01 <- ifelse(child_ica_dummy$PR004 == -1, 1, 0)
 child_ica_dummy$PR009_01 <- ifelse(child_ica_dummy$PR009 == -1, 1, 0)
-child_ica_dummy$PR004_PR009_01 <- ifelse(child_ica_dummy$PR004 == -1 | child_ica_dummy$PR009 == -1, 1, 0)
+child_ica_dummy$PR004_PR009_01 <- ifelse(
+  child_ica_dummy$PR004 == -1 | child_ica_dummy$PR009 == -1, 1, 0)
+
+
+child_ica_dummy$PR004_only_01 <- ifelse(
+  child_ica_dummy$PR004 == -1 & child_ica_dummy$PR009 == 0, 1, 0)
+child_ica_dummy$PR009_only_01 <- ifelse(
+  child_ica_dummy$PR004 == 0 & child_ica_dummy$PR009 == -1, 1, 0)
+child_ica_dummy$PR004_PR009_both_01 <- ifelse(
+  child_ica_dummy$PR004 == -1 & child_ica_dummy$PR009 == -1, 1, 0)
 ```
 
 ```{r}
@@ -1458,7 +1526,6 @@ vif(glm_child_hunza)
 glm_child <- glm(C003_01 ~ n_children_in_household + PR004_PR009_01 + H002, family = "binomial", data = child_ica_dummy)
 
 ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
-
 ```
 
 ##### Hosmer-Lemeshow
@@ -1473,6 +1540,9 @@ hoslem.test(x = glm_child$y, y = fitted(glm_child))
 glm_child_hunza <- glm(C003_01 ~ n_children_in_household + PR004_PR009_01 + H002, family = "binomial", data = child_ica_dummy %>% filter(DID == 266))
 
 ggPredict(glm_child_hunza, se = TRUE, show.summary = TRUE, point = TRUE, colorAsFactor = TRUE)
+
+
+
 ```
 
 ##### Hosmer-Lemeshow
@@ -1974,13 +2044,30 @@ ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point
 
 ```
 
-##### Hosmer-Lemeshow
+##### Hosmer-Lemeshow 
 
 ```{r}
 hoslem.test(x = glm_child$y, y = fitted(glm_child))
 ```
 
+##### Location dists_not_fit
 
+```{r}
+ica %>% 
+  mutate(centroid = st_centroid(geometry),
+    x = st_coordinates(centroid)[,1],
+    y = st_coordinates(centroid)[,2]) %>% 
+    ggplot() +
+  geom_sf() +
+  geom_point(data = child_ica_dummy,
+             aes(x, y, color = DID %in% dists_not_fit)) +
+  coord_sf(xlim = c(min(child_ica_dummy$x), max(child_ica_dummy$x)), 
+           ylim = c(min(child_ica_dummy$y), max(child_ica_dummy$y))) +
+  geom_text(data = child_ica_dummy %>% filter(DID == dists_not_fit),
+            aes(x, y, label = DID), check_overlap = TRUE, vjust = -0.5) +
+  ggtitle("Distrists, the Data of Which the Model Doesn't Fit Well")
+  
+```
 
 
 
@@ -2021,6 +2108,420 @@ fit_all %>%
   filter(p.value < 0.05)
 ```
 
+
+### GLM on Never Enrolled
+
+#### GLM C003_1_01 ~ n_children_in_household + C002_01 + PR004_PR009_01
+
+```{r}
+glm_child <- glm(C003_1_01 ~ n_children_in_household + C002_01 + PR004_PR009_01, family = "binomial", data = child_ica_dummy)
+
+ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+
+```
+
+##### Hosmer-Lemeshow
+
+```{r}
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
+```
+
+
+#### GLM C003_1_01 ~ n_children_in_household + C002_01 + H002_1_01 + H002_2_01
+
+```{r}
+glm_child <- glm(C003_01 ~ n_children_in_household + C002_01 + H002_1_01 + H002_2_01, family = "binomial", data = child_ica_dummy)
+
+ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+```
+
+##### Hosmer-Lemeshow
+
+```{r}
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
+```
+
+
+#### Hunza. GLM C003_1_01 ~ n_children_in_household + C002_01 + PR004_PR009_01
+
+```{r}
+glm_child <- glm(C003_1_01 ~ n_children_in_household + C002_01 + PR004_PR009_01, family = "binomial", data = child_ica_dummy %>% filter(DID == 266))
+
+ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+
+```
+
+##### Hosmer-Lemeshow
+
+```{r}
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
+```
+
+
+#### Hunza. GLM C003_1_01 ~ n_children_in_household + C002_01 + H002_1_01 + H002_2_01
+
+```{r}
+glm_child <- glm(C003_1_01 ~ n_children_in_household + C002_01 + H002_1_01 + H002_2_01, family = "binomial", data = child_ica_dummy %>% filter(DID == 266))
+
+ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+
+```
+
+##### Hosmer-Lemeshow
+
+```{r}
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
+```
+
+
+#### GLM Age >= 5. GLM C003_01 ~ n_children_in_household + C002_01 + PR004_PR009_01
+
+```{r}
+glm_child <- glm(C003_01 ~ n_children_in_household + C002_01 + PR004_PR009_01, family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5))
+
+ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+
+```
+
+##### Hosmer-Lemeshow
+
+```{r}
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
+```
+
+
+#### GLM Age >= 5. GLM C003_01 ~ n_children_in_household + C002_01 + PR004_only_01 + PR009_only_01 + PR004_PR009_both_01 + as.factor(DID)
+
+```{r}
+glm_child <- glm(C003_01 ~ 
+                   n_children_in_household + 
+                   C002_01 + 
+                   PR004_only_01 + PR009_only_01 + PR004_PR009_both_01 + as.factor(DID), 
+                 family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5))
+
+ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+
+```
+
+##### Hosmer-Lemeshow
+
+```{r}
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
+```
+
+
+##### AIC
+
+```{r}
+extractAIC(glm_child)
+```
+
+##### BIC
+
+```{r}
+extractAIC(glm_child, k = log(nrow(glm_child$data)))
+```
+
+##### effectiveness of explanatory variables
+
+```{r}
+glm_child_null <- glm(C003_01 ~ 1, family = "binomial", 
+                      data = child_ica_dummy %>% filter(C001 >= 5))
+anova(glm_child_null, glm_child, test = "Chisq")
+```
+
+<!-- ##### variables selection -->
+
+<!-- ```{r} -->
+<!-- step(glm_child_null, direction = "both",  -->
+<!--      scope = (~ C001 + C002_01 + PR004_01 + PR009_01)) -->
+<!-- ``` -->
+
+##### multicolinearity
+
+```{r}
+vif(glm_child)
+
+```
+
+
+#### GLM Age >= 5. GLM C003_01 ~ n_children_in_household + C002_01 + PR004_only_01 + PR009_only_01 + PR004_PR009_both_01 + as.factor(C001) + as.factor(DID)
+
+```{r}
+glm_child <- glm(C003_01 ~ 
+                   n_children_in_household + 
+                   C002_01 + 
+                   PR004_only_01 + PR009_only_01 + PR004_PR009_both_01 + 
+                   as.factor(C001) + as.factor(DID), 
+                 family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5))
+
+ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+
+```
+
+##### Hosmer-Lemeshow
+
+```{r}
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
+```
+
+
+##### AIC
+
+```{r}
+extractAIC(glm_child)
+```
+
+##### BIC
+
+```{r}
+extractAIC(glm_child, k = log(nrow(glm_child$data)))
+```
+
+##### effectiveness of explanatory variables
+
+```{r}
+glm_child_null <- glm(C003_01 ~ 1, family = "binomial", 
+                      data = child_ica_dummy %>% filter(C001 >= 5))
+anova(glm_child_null, glm_child, test = "Chisq")
+```
+
+<!-- ##### variables selection -->
+
+<!-- ```{r} -->
+<!-- step(glm_child_null, direction = "both",  -->
+<!--      scope = (~ C001 + C002_01 + PR004_01 + PR009_01)) -->
+<!-- ``` -->
+
+##### multicolinearity
+
+```{r}
+vif(glm_child)
+
+```
+
+
+
+#### GLM Age >= 5. GLM C003_1_01 ~ n_children_in_household + C002_01 + H002
+
+```{r}
+glm_child <- glm(C003_1_01 ~ n_children_in_household + C002_01 + H002_1_01 + H002_2_01, family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5))
+
+ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+
+```
+
+##### Hosmer-Lemeshow
+
+```{r}
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
+```
+
+
+
+
+
+
+#### GLM Age >= 5. GLM C003_1_01 ~ n_children_in_household + C002_01 + PR004_PR009_01
+
+```{r}
+glm_child <- glm(C003_1_01 ~ n_children_in_household + C002_01 + PR004_PR009_01, family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5))
+
+ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+
+```
+
+##### Hosmer-Lemeshow
+
+```{r}
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
+```
+
+
+
+#### GLM Age >= 5. GLM C003_1_01 ~ n_children_in_household + C002_01 + PR004_only_01 + PR009_only_01 + PR004_PR009_both_01
+
+```{r}
+glm_child <- glm(C003_1_01 ~ 
+                   n_children_in_household + 
+                   C002_01 + 
+                   PR004_only_01 + PR009_only_01 + PR004_PR009_both_01, 
+                 family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5))
+
+ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+
+```
+
+##### Hosmer-Lemeshow
+
+```{r}
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
+```
+
+
+
+
+
+#### GLM Age >= 5. GLM C003_1_01 ~ n_children_in_household + C002_01 + PR004_only_01 + PR009_only_01 + PR004_PR009_both_01 + as.factor(DID) +as.factor(C001)
+
+```{r}
+glm_child <- glm(C003_1_01 ~ 
+                   n_children_in_household + 
+                   C002_01 + 
+                   PR004_only_01 + PR009_only_01 + PR004_PR009_both_01 + 
+                   as.factor(DID) + as.factor(C001), 
+                 family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5))
+
+ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+
+```
+
+##### Hosmer-Lemeshow
+
+```{r}
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
+```
+
+##### AIC
+
+```{r}
+extractAIC(glm_child)
+```
+
+##### BIC
+
+```{r}
+extractAIC(glm_child, k = log(nrow(glm_child$data)))
+```
+
+##### effectiveness of explanatory variables
+
+```{r}
+glm_child_null <- glm(C003_1_01~1, family = "binomial", 
+                      data = child_ica_dummy %>% filter(C001 >= 5))
+anova(glm_child_null, glm_child, test = "Chisq")
+```
+
+<!-- ##### variables selection -->
+
+<!-- ```{r} -->
+<!-- step(glm_child_null, direction = "both",  -->
+<!--      scope = (~ C001 + C002_01 + PR004_01 + PR009_01)) -->
+<!-- ``` -->
+
+##### multicolinearity
+
+```{r}
+vif(glm_child)
+
+```
+
+##### Districts with Bigger Than 0.05
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+#### GLM Age >= 5. GLM C003_1_01 ~ n_children_in_household + C002_01 + PR004_only_01 + PR009_only_01 + PR004_PR009_both_01 + as.factor(DID)
+
+```{r}
+glm_child <- glm(C003_1_01 ~ 
+                   n_children_in_household + 
+                   C002_01 + 
+                   PR004_only_01 + PR009_only_01 + PR004_PR009_both_01 + as.factor(DID), 
+                 family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5))
+
+ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+
+```
+
+##### Hosmer-Lemeshow
+
+```{r}
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
+```
+
+
+##### AIC
+
+```{r}
+extractAIC(glm_child)
+```
+
+##### BIC
+
+```{r}
+extractAIC(glm_child, k = log(nrow(glm_child$data)))
+```
+
+##### effectiveness of explanatory variables
+
+```{r}
+glm_child_null <- glm(C003_1_01 ~ 1, family = "binomial", 
+                      data = child_ica_dummy %>% filter(C001 >= 5))
+anova(glm_child_null, glm_child, test = "Chisq")
+```
+
+<!-- ##### variables selection -->
+
+<!-- ```{r} -->
+<!-- step(glm_child_null, direction = "both",  -->
+<!--      scope = (~ C001 + C002_01 + PR004_01 + PR009_01)) -->
+<!-- ``` -->
+
+##### multicolinearity
+
+```{r}
+vif(glm_child)
+
+```
+
+
+#### GLM Age >= 5. GLM C003_1_01 ~ n_children_in_household + C002_01 + as.factor(H006) + as.factor(DID)
+
+```{r}
+glm_child <- glm(C003_1_01 ~ 
+                   n_children_in_household + 
+                   C002_01 + 
+                   as.factor(H006) + as.factor(DID), 
+                 family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5))
+
+ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+
+```
+
+##### Hosmer-Lemeshow
+
+```{r}
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
+```
+
+
+#### GLM Age >= 5. GLM C003_1_01 ~ n_children_in_household + C002_01 + as.factor(H004) + as.factor(DID)
+
+```{r}
+glm_child <- glm(C003_1_01 ~ 
+                   n_children_in_household + 
+                   C002_01 + 
+                   as.factor(H004) + as.factor(DID), 
+                 family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5))
+
+ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+
+```
+
+##### Hosmer-Lemeshow
+
+```{r}
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
+```
 
 
 
@@ -2104,8 +2605,223 @@ vif(glm_child)
 
 
 
+### Further Analysis
+
+#### dists_not_fit
+
+##### Sample Size
+
+```{r}
+child_ica_dummy %>% 
+  filter(DID %in% dists_not_fit) %>% 
+  group_by(DID, C002_01) %>% 
+  summarize(n = n()) %>% 
+  ggplot(aes(factor(DID), n, fill = factor(C002_01))) +
+  geom_col(position = position_dodge()) +
+  scale_fill_manual(values = c("darkseagreen", "burlywood")) +
+  geom_text(aes(label = n), check_overlap = TRUE, size = 3, vjust = -1) +
+  theme(axis.text.x = element_text(angle = 85)) +
+  ggtitle("Sample Size in Each District")
+```
 
 
 
 
+##### Average Enrollment Rate
 
+```{r}
+child_ica_dummy %>% 
+  filter(DID %in% dists_not_fit) %>% 
+  group_by(DID) %>% 
+  summarize(avg_enrollment = mean(C003 == 3))
+```
+
+##### Age, Enrollment 
+
+```{r}
+child_ica_dummy %>% 
+  filter(DID %in% dists_not_fit) %>% 
+  group_by(DID, C002_01, C001) %>% 
+  mutate(avg = mean(C003 == 3)) %>% 
+  ggplot(aes(C001, avg, color = factor(C002_01))) +
+  geom_line() +
+  facet_wrap(.~DID)
+```
+
+##### Parets Education
+
+```{r}
+child_ica_dummy %>% 
+  filter(DID %in% dists_not_fit) %>% 
+  group_by(DID) %>% 
+  summarize(parents_edu_rate = mean(PR004_PR009_01 == 1),
+            mother = mean(PR004 == -1),
+            father = mean(PR009 == -1))
+
+```
+
+
+```{r}
+child_ica_dummy %>% 
+  filter(DID %in% dists_not_fit) %>% 
+  group_by(DID) %>% 
+  mutate(parents_edu_rate = mean(PR004_PR009_01 == 1),
+            mother = mean(PR004 == -1),
+            father = mean(PR009 == -1)) %>% 
+  ggplot(aes(factor(DID), parents_edu_rate, color = factor(RID))) +
+  geom_point() +
+  annotate("rect", xmin = 0.5, xmax = 28.5, ymin = 0.5, ymax = 1,
+           alpha = .1, fill = "deepskyblue") +
+  ggtitle("What Percent of Couples of Parents Have Educational Experience?")
+  
+```
+
+```{r}
+child_ica_dummy %>% 
+  filter(DID %in% dists_not_fit) %>% 
+  group_by(DID) %>% 
+  mutate(parents_edu_rate = mean(PR004_PR009_01 == 1),
+            mother = mean(PR004 == -1),
+            father = mean(PR009 == -1)) %>% 
+  ggplot(aes(factor(DID), fill = factor(PR004_PR009_01))) +
+  geom_histogram(position = position_stack(), stat = "count") +
+  ggtitle("Mothers or Fathers Ever Been To School?")
+```
+
+
+```{r}
+child_ica_dummy %>% 
+  filter(DID %in% dists_not_fit) %>% 
+  group_by(DID) %>% 
+  mutate(parents_edu_rate = mean(PR004_PR009_01 == 1),
+            mother = mean(PR004 == -1),
+            father = mean(PR009 == -1)) %>% 
+  ggplot(aes(factor(DID), fill = factor(PR004_01))) +
+  geom_histogram(position = position_stack(), stat = "count") +
+  ggtitle("Mothers Ever Been To School?")
+```
+```{r}
+child_ica_dummy %>% 
+  filter(DID %in% dists_not_fit) %>% 
+  group_by(DID) %>% 
+  mutate(parents_edu_rate = mean(PR004_PR009_01 == 1),
+            mother = mean(PR004 == -1),
+            father = mean(PR009 == -1)) %>% 
+  ggplot(aes(factor(DID), fill = factor(PR009_01))) +
+  geom_histogram(position = position_stack(), stat = "count") +
+  ggtitle("Fathers Ever Been To School?")
+```
+
+##### boxplot
+
+```{r}
+child_ica_dummy %>% 
+  filter(DID == dists_not_fit) %>% 
+  ggplot(aes(factor(DID), fill = factor(C003))) +
+  geom_histogram(position = position_stack(), stat = "count") +
+  xlab("Districts") +
+  ggtitle("Education Status by Distrists Whose Data Don't Fit The Model Well")
+```
+
+##### Paid-Tuition?
+
+```{r}
+child_ica_dummy %>% 
+  filter(DID == dists_not_fit) %>% 
+  ggplot(aes(factor(DID), fill = factor(C008a))) +
+  geom_histogram(stat = "count", position = position_stack()) +
+  ggtitle("Receiving Paid-Tuition?")
+  
+```
+
+##### Electricity
+
+```{r}
+child_ica_dummy %>% 
+  filter(DID == dists_not_fit) %>% 
+  ggplot(aes(factor(DID), fill = factor(H004))) +
+  geom_histogram(stat = "count", position = position_stack()) +
+  ggtitle("Electricity Available in House?")
+```
+
+
+##### TV
+
+```{r}
+child_ica_dummy %>% 
+  filter(DID == dists_not_fit) %>% 
+  ggplot(aes(factor(DID), fill = factor(H005))) +
+  geom_histogram(stat = "count", position = position_stack()) +
+  ggtitle("TV in House?")
+```
+
+
+
+
+##### DID == 199
+
+```{r}
+child_ica_dummy %>% 
+  filter(DID == 199) %>% 
+  select(DNAME)
+```
+
+###### Institution Type
+
+```{r}
+child_ica_dummy %>% 
+  filter(DID == 199) %>% 
+  ggplot(aes(factor(C006))) +
+  geom_bar() +
+  geom_text(stat = "count", aes(label = ..count..), vjust = -0.5) +
+  ggtitle("School Type", subtitle = "1:Gov., 2:Private, 3:Madrasah, 4:Other")
+```
+
+###### Paid-Tuition
+
+```{r}
+child_ica_dummy %>% 
+  filter(DID == 199) %>% 
+  ggplot(aes(factor(C008a))) +
+  geom_bar() +
+  geom_text(stat = "count", aes(label = ..count..), vjust = -0.5) +
+  ggtitle("Receiving Paid-Tuition?")
+```
+
+###### Literacy
+
+```{r}
+child_ica_dummy %>% 
+  filter(DID == 199) %>% 
+  ggplot(aes(factor(C001), fill = factor(C010))) +
+  geom_bar(position = position_stack(), stat = "count") + 
+  ggtitle("Literacy by Age", subtitle = "1:Beginner/Nothing, 2:Letters, 3:Words, 4:Sentences, 5:Story")
+```
+
+
+###### testing
+
+```{r}
+child_ica_dummy %>% 
+  group_by(H004) %>% 
+  summarize(avg = mean(C003 == 3))
+```
+
+
+#### Age and Number of Children in Each Household
+
+```{r}
+child_ica_dummy %>% 
+  filter(C001 >= 5) %>% 
+  ggplot(aes(factor(C001), fill = factor(n_children_in_household))) +
+  geom_bar(stat = "count", position = position_stack()) +
+  ggtitle("Correlation Between Age and Number of Children in Each Household?")
+```
+
+```{r}
+child_ica_dummy %>% 
+  filter(C001 >= 5) %>% 
+  ggplot(aes(factor(C001), fill = factor(n_children_in_household))) +
+  geom_bar(stat = "count", position = "fill") +
+  ggtitle("Correlation Between Age and Number of Children in Each Household?", subtitle = "Proportional Bar Plot")
+```
