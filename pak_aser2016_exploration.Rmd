@@ -6,6 +6,7 @@ output:
   html_document:
     df_print: paged
     toc: true
+    toc_depth: 5
     toc_float: true
 ---
 
