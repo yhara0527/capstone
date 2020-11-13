@@ -400,7 +400,7 @@ anova(glm_child_null, glm_child, test = "Chisq")
 
 ```{r}
 step(glm_child_null, direction = "both", 
-     scope = (~ C001 + C002_01 + PR004_PR009_both_01 + n_children_in_household))
+     scope = (~ C001 + C002_01 + PR004_PR009_both_01 + PR004_PR009_01 + n_children_in_household))
 ```
 
 ##### multicolinearity
@@ -409,6 +409,37 @@ step(glm_child_null, direction = "both",
 vif(glm_child)
 
 ```
+
+
+#### Hunza. GLM Age >= 5 C003_01 ~ n_children_in_household + PR004_PR009_01
+
+```{r}
+glm_child <- glm(C003_01 ~ n_children_in_household + PR004_PR009_01, family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5, DID == 266))
+
+ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+
+```
+
+##### Hosmer-Lemeshow
+
+```{r}
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
+```
+
+##### AIC
+
+```{r}
+extractAIC(glm_child)
+```
+
+##### BIC
+
+```{r}
+extractAIC(glm_child, k = log(nrow(glm_child$data)))
+```
+
+
+
 
 
 #### Whole Pak. GLM Age >= 5 C003_01 ~ n_children_in_household + PR004_PR009_both_01 + relevel(DID, ref = "266")
