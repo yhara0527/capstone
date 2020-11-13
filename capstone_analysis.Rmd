@@ -436,7 +436,7 @@ glm_child %>%
 ```
 
 
-#### dists_near_hunza_2. GLM Age >= 5 C003_01 ~ n_children_in_household + PR004_PR009_both_01 + relevel(DID, ref = "266")
+#### dists_near_hunza_2. GLM Age >= 5 C003_01 ~ n_children_in_household + PR004_PR009_both_01
 
 ```{r}
 glm_child <- glm(C003_01 ~ n_children_in_household + PR004_PR009_both_01, family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5, DID %in% dists_near_hunza_2))
@@ -451,69 +451,213 @@ hoslem.test(x = glm_child$y, y = fitted(glm_child))
 ```
 
 
-
-
-
-
-### memo
-
-#### fit the model
+#### dists_near_hunza_2 or Not. GLM Age >= 5 C003_01 ~ n_children_in_household + PR004_PR009_both_01 + DID_near_hunza_2
 
 ```{r}
-glm_child <- glm(C003_01~ C001 + C002_01 + PR004_01, family = "binomial", data = child_ica_dummy)
+glm_child <- glm(C003_01 ~ n_children_in_household + PR004_PR009_both_01 + DID_near_hunza_2, family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5))
 
-summary(glm_child)
+glm_child %>% summary()
 ```
 
-##### exponential transformation
+##### Hosmer-Lemeshow
 
 ```{r}
-exp(glm_child$coefficients)
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
 ```
 
-##### confidence interval (intercept and coefficient)
+
+
+#### Not dists_near_hunza. GLM Age >= 5 C003_01 ~ n_children_in_household + PR004_PR009_both_01 + as.factor(H004)
 
 ```{r}
-confint(glm_child, level = 0.95)
+glm_child <- glm(C003_01 ~ n_children_in_household + C002_01 + PR004_PR009_both_01 + as.factor(H004), family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5, !DID %in% dists_near_hunza_2))
+
+glm_child %>% summary()
 ```
 
-##### exponential transformation of confidence interval (odds ratio of intercept and coefficient)
+##### Hosmer-Lemeshow
 
 ```{r}
-exp(confint(glm_child, level = 0.95))
-```
-
-##### AIC
-
-```{r}
-extractAIC(glm_child)
-```
-
-##### BIC
-
-```{r}
-extractAIC(glm_child, k = log(nrow(glm_child$data)))
-```
-
-##### effectiveness of explanatory variables
-
-```{r}
-glm_child_null <- glm(C003_01~1, family = "binomial", data = child_ica_dummy)
-anova(glm_child_null, glm_child, test = "Chisq")
-```
-
-##### variables selection
-
-```{r}
-step(glm_child_null, direction = "both", 
-     scope = (~ C001 + C002_01 + PR004_01 + PR009_01))
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
 ```
 
 ##### multicolinearity
 
 ```{r}
 vif(glm_child)
-
 ```
+
+```{r}
+g_n <- gschool %>% 
+  group_by(DID) %>% 
+  summarize(g_n = sum(unique(GSID)))
+```
+```{r}
+p_n <- pschool %>% 
+  group_by(DID) %>% 
+  summarize(p_n = sum(unique(PSID)))
+```
+
+```{r}
+school_type <- g_n %>% full_join(p_n) %>% 
+  mutate(ratio = p_n/(g_n + p_n))
+school_type$DID <- as.factor(school_type$DID)
+```
+
+```{r}
+child_ica_dummy %>% 
+  full_join(school_type)
+```
+
+#### Not dists_near_hunza. GLM Age >= 5 ratio + C002_01 + PR004_PR009_both_01
+
+```{r}
+glm_child <- glm(C003_01 ~ ratio + C002_01 + PR004_PR009_both_01, family = "binomial", data = child_ica_dummy %>% full_join(school_type) %>% filter(C001 >= 5, !DID %in% dists_near_hunza_2))
+
+ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+# glm_child %>% summary()
+```
+
+##### Hosmer-Lemeshow
+
+```{r}
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
+```
+
+#### Not dists_near_hunza. GLM Age >= 5 n_children_in_household + ratio + C002_01 + PR004_PR009_both_01
+
+```{r}
+glm_child <- glm(C003_01 ~ n_children_in_household + ratio + C002_01 + PR004_PR009_both_01, family = "binomial", data = child_ica_dummy %>% full_join(school_type) %>% filter(C001 >= 5, !DID %in% dists_near_hunza_2))
+
+ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
+# glm_child %>% summary()
+```
+
+##### Hosmer-Lemeshow
+
+```{r}
+hoslem.test(x = glm_child$y, y = fitted(glm_child)) 
+```
+
+
+
+
+
+#### Each Dist. GLM Age >= 5 C003_01 ~ n_children_in_household + PR004_PR009_both_01
+
+```{r}
+each_dist <- sapply(as.numeric(as.character(unique(child_ica_dummy$DID))), function(id){
+  child_ica_dummy <- child_ica_dummy %>% filter(DID == id)
+  glm_child <- glm(C003_01 ~ n_children_in_household + PR004_PR009_both_01, 
+                   family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5))
+  temp_hoslem <- hoslem.test(x = glm_child$y, y = fitted(glm_child))
+  data.frame(DID = id, hoslem_p_value = temp_hoslem$p.value)
+}) %>% t()
+each_dist
+```
+
+```{r}
+each_dist <- each_dist %>% 
+  as.data.frame() 
+each_dist$DID <- each_dist %>% 
+  pull(DID) %>% 
+  as.numeric()
+each_dist$hoslem_p_value <- each_dist %>% 
+  pull(hoslem_p_value) %>% 
+  as.numeric()
+each_dist
+```
+
+#### Dists with P value <= 0.05
+
+```{r}
+each_dist %>% 
+  filter(hoslem_p_value <= 0.05)
+```
+
+```{r}
+dists_not_fit <- each_dist %>% 
+  filter(hoslem_p_value <= 0.05) %>% 
+  pull(DID)
+```
+
+
+#### Not dists_not_fit. GLM Age >= 5 C003_01 ~ n_children_in_household + PR004_PR009_both_01
+
+```{r}
+glm_child <- glm(C003_01 ~ n_children_in_household + PR004_PR009_both_01, family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5, !DID %in% dists_not_fit))
+
+glm_child %>% summary()
+```
+
+##### Hosmer-Lemeshow
+
+```{r}
+hoslem.test(x = glm_child$y, y = fitted(glm_child))
+```
+
+
+
+
+<!-- ### memo -->
+
+<!-- #### fit the model -->
+
+<!-- ```{r} -->
+<!-- glm_child <- glm(C003_01~ C001 + C002_01 + PR004_01, family = "binomial", data = child_ica_dummy) -->
+
+<!-- summary(glm_child) -->
+<!-- ``` -->
+
+<!-- ##### exponential transformation -->
+
+<!-- ```{r} -->
+<!-- exp(glm_child$coefficients) -->
+<!-- ``` -->
+
+<!-- ##### confidence interval (intercept and coefficient) -->
+
+<!-- ```{r} -->
+<!-- confint(glm_child, level = 0.95) -->
+<!-- ``` -->
+
+<!-- ##### exponential transformation of confidence interval (odds ratio of intercept and coefficient) -->
+
+<!-- ```{r} -->
+<!-- exp(confint(glm_child, level = 0.95)) -->
+<!-- ``` -->
+
+<!-- ##### AIC -->
+
+<!-- ```{r} -->
+<!-- extractAIC(glm_child) -->
+<!-- ``` -->
+
+<!-- ##### BIC -->
+
+<!-- ```{r} -->
+<!-- extractAIC(glm_child, k = log(nrow(glm_child$data))) -->
+<!-- ``` -->
+
+<!-- ##### effectiveness of explanatory variables -->
+
+<!-- ```{r} -->
+<!-- glm_child_null <- glm(C003_01~1, family = "binomial", data = child_ica_dummy) -->
+<!-- anova(glm_child_null, glm_child, test = "Chisq") -->
+<!-- ``` -->
+
+<!-- ##### variables selection -->
+
+<!-- ```{r} -->
+<!-- step(glm_child_null, direction = "both",  -->
+<!--      scope = (~ C001 + C002_01 + PR004_01 + PR009_01)) -->
+<!-- ``` -->
+
+<!-- ##### multicolinearity -->
+
+<!-- ```{r} -->
+<!-- vif(glm_child) -->
+
+<!-- ``` -->
 
 
