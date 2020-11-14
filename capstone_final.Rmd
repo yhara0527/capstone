@@ -1,16 +1,8 @@
 ---
-title: "Capstone Analysis"
+title: "Capstone Final"
 author: "Yusei Hara"
-date: "2020/11/11"
-output:
-  html_document:
-    df_print: paged
-    toc: yes
-    toc_depth: 5
-    toc_float: yes
-  word_document:
-    toc: yes
-    toc_depth: '5'
+date: "2020/11/14"
+output: html_document
 ---
 
 ```{r setup, include=FALSE}
@@ -36,10 +28,8 @@ library(scatterplot3d)
 library(car)
 library(ResourceSelection) # to excute Hosmer-Lemeshow test
 library(equatiomatic)      # to convert model to equation
-# library(broom)
 require(ggiraph)
 require(ggiraphExtra)
-# require(plyr)
 ```
 
 ### Data Installation
@@ -76,28 +66,6 @@ ica <- sf::st_read("map/pak_ica_categories_areas_geonode_apr2017.shp")
 ```
 
 ### Data Wrangling
-
-```{r,include=FALSE, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
-ica %>% 
-  mutate(
-    centroid = st_centroid(geometry),
-    x = st_coordinates(centroid)[,1],
-    y = st_coordinates(centroid)[,2]) %>% 
-    ggplot() +
-  geom_sf() +
-  geom_point(aes(x, y))
-```
-
-```{r,include=FALSE, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
-ica %>% 
-  mutate(centroid = st_centroid(geometry),
-    x = st_coordinates(centroid)[,1],
-    y = st_coordinates(centroid)[,2]) %>% 
-    ggplot() +
-  geom_sf() +
-  geom_point(aes(x, y)) +
-  geom_text(aes(x, y, label = Districts),size = 2, check_overlap = TRUE, nudge_y = 1)
-```
 
 ```{r}
 ica_df <- ica %>% 
@@ -268,7 +236,7 @@ child_ica_dummy$C003_1_01 <- ifelse(child_ica_dummy$C003 == 1, 1, 0)   # never-e
 child_ica_dummy$C003_2_01 <- ifelse(child_ica_dummy$C003 == 2, 1, 0)   # drop-out
 child_ica_dummy$PR004_01 <- ifelse(child_ica_dummy$PR004 == -1, 1, 0)
 child_ica_dummy$PR009_01 <- ifelse(child_ica_dummy$PR009 == -1, 1, 0)
-child_ica_dummy$PR004_PR009_01 <- ifelse(
+child_ica_dummy$PR004ORPR009_01 <- ifelse(
   child_ica_dummy$PR004 == -1 | child_ica_dummy$PR009 == -1, 1, 0)
 
 
@@ -276,16 +244,16 @@ child_ica_dummy$PR004_only_01 <- ifelse(
   child_ica_dummy$PR004 == -1 & child_ica_dummy$PR009 == 0, 1, 0)
 child_ica_dummy$PR009_only_01 <- ifelse(
   child_ica_dummy$PR004 == 0 & child_ica_dummy$PR009 == -1, 1, 0)
-child_ica_dummy$PR004_PR009_both_01 <- ifelse(
+child_ica_dummy$PR004ANDPR009_01 <- ifelse(
   child_ica_dummy$PR004 == -1 & child_ica_dummy$PR009 == -1, 1, 0)
 ```
 
 ```{r}
-n_children_in_household <- child_ica_dummy %>% 
+N_Child_HH <- child_ica_dummy %>% 
   group_by(HHID) %>% 
-  summarize(n_children_in_household = length(unique(CID)))
+  summarize(N_Child_HH = length(unique(CID)))
 
-child_ica_dummy <- child_ica_dummy %>% left_join(n_children_in_household)
+child_ica_dummy <- child_ica_dummy %>% left_join(N_Child_HH)
 
 child_ica_dummy$H002_1_01 <- ifelse(child_ica_dummy$H002 == 1, 1, 0)
 child_ica_dummy$H002_2_01 <- ifelse(child_ica_dummy$H002 == 2, 1, 0)
@@ -304,13 +272,6 @@ child_ica_dummy$Gilgit_Baltistan <- ifelse(child_ica_dummy$RID == 6, 1, 0)
 child_ica_dummy$Azad_Jammu_and_Kashmir <- ifelse(child_ica_dummy$RID == 7, 1, 0)
 child_ica_dummy$Islamabad_ICT <- ifelse(child_ica_dummy$RID == 8, 1, 0)
 child_ica_dummy$Federally_Administrated_Tribal_Areas <- ifelse(child_ica_dummy$RID == 9, 1, 0)
-```
-
-```{r}
-dists_near_hunza_1 <- c(178, 199, 243, 259, 265, 266, 267, 270, 273, 274)
-child_ica_dummy$DID_near_hunza_1 <- ifelse(child_ica_dummy$DID %in% dists_near_hunza_1, 1, 0)
-dists_near_hunza_2 <- c(176, 178, 185, 199, 243, 245, 259, 265, 267, 270, 273, 274)
-child_ica_dummy$DID_near_hunza_2 <- ifelse(child_ica_dummy$DID %in% dists_near_hunza_2, 1, 0)
 ```
 
 #### Factor Variables
@@ -370,10 +331,10 @@ data.frame(original_rows = nrow(child_ica %>% filter(DID == 266)),
 
 ### Model 1 [NofChild + HHOwnership]
 
-#### Hunza. GLM Age >= 5 C003_01 ~ n_children_in_household + H003
+#### Hunza. GLM Age >= 5 C003_01 ~ N_Child_HH + H003
 
 ```{r}
-glm_child <- glm(C003_01 ~ n_children_in_household + H003, family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5, !is.na(H003), DID == 266))
+glm_child <- glm(C003_01 ~ N_Child_HH + H003, family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5, !is.na(H003), DID == 266))
 
 ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
 ```
@@ -427,24 +388,24 @@ anova(glm_child_null, glm_child, test = "Chisq")
 
 ```{r}
 step(glm_child_null, direction = "both",
-     scope = (~ C001 + C002_01 + n_children_in_household + H003))
+     scope = (~ C001 + C002_01 + N_Child_HH + H003))
 ```
 
 ```{r}
 child_ica_dummy %>% 
   filter(!is.na(H003), C001 >= 5, DID == 266) %>% 
   group_by(H003) %>% 
-  ggplot(aes(factor(PR004_PR009_both_01), fill = H003)) +
+  ggplot(aes(factor(PR004ANDPR009_01), fill = H003)) +
   geom_bar(stat = "count")
 ```
 <div>There seems multi-colinearity between Household Ownership and Both-Parents Education</div>
 
 ### Model 2 [NofChild + ParentsBothEdu]
 
-#### Hunza. GLM Age >= 5 C003_01 ~ n_children_in_household + PR004_PR009_both_01
+#### Hunza. GLM Age >= 5 C003_01 ~ N_Child_HH + PR004ANDPR009_01
 
 ```{r}
-glm_child <- glm(C003_01 ~ n_children_in_household + PR004_PR009_both_01, family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5, DID == 266))
+glm_child <- glm(C003_01 ~ N_Child_HH + PR004ANDPR009_01, family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5, DID == 266))
 
 ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
 
@@ -479,7 +440,7 @@ anova(glm_child_null, glm_child, test = "Chisq")
 
 ```{r}
 step(glm_child_null, direction = "both", 
-     scope = (~ C001 + C002_01 + PR004_PR009_both_01 + PR004_PR009_01 + n_children_in_household))
+     scope = (~ C001 + C002_01 + PR004ANDPR009_01 + PR004ORPR009_01 + N_Child_HH))
 ```
 
 ##### multicolinearity
@@ -491,10 +452,10 @@ vif(glm_child)
 
 ### Model 3 [NofChild + ParentsEitherEdu]
 
-#### Hunza. GLM Age >= 5 C003_01 ~ n_children_in_household + PR004_PR009_01
+#### Hunza. GLM Age >= 5 C003_01 ~ N_Child_HH + PR004ORPR009_01
 
 ```{r}
-glm_child <- glm(C003_01 ~ n_children_in_household + PR004_PR009_01, family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5, DID == 266))
+glm_child <- glm(C003_01 ~ N_Child_HH + PR004ORPR009_01, family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5, DID == 266))
 
 ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE)
 
@@ -523,12 +484,12 @@ extractAIC(glm_child, k = log(nrow(glm_child$data)))
 
 ### Model 1 [NofChild + HHOwnership]
 
-#### Each Dist. GLM Age >= 5 C003_01 ~ n_children_in_household + H003
+#### Each Dist. GLM Age >= 5 C003_01 ~ N_Child_HH + H003
 
 ```{r}
 each_dist <- sapply(as.numeric(as.character(unique(child_ica_dummy$DID))), function(id){
   child_ica_dummy <- child_ica_dummy %>% filter(DID == id)
-  glm_child <- glm(C003_01 ~ n_children_in_household + H003, 
+  glm_child <- glm(C003_01 ~ N_Child_HH + H003, 
                    family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5, !is.na(H003)))
   temp_hoslem <- hoslem.test(x = glm_child$y, y = fitted(glm_child))
   data.frame(DID = id, hoslem_p_value = temp_hoslem$p.value)
@@ -583,10 +544,10 @@ ica %>%
 
 ### Model 2 [NofChild + ParentsBothEdu]
 
-#### Whole Pak. GLM Age >= 5 C003_01 ~ n_children_in_household + PR004_PR009_both_01 + relevel(DID, ref = "266")
+#### Whole Pak. GLM Age >= 5 C003_01 ~ N_Child_HH + PR004ANDPR009_01 + relevel(DID, ref = "266")
 
 ```{r}
-glm_child <- glm(C003_01 ~ n_children_in_household + PR004_PR009_both_01 + relevel(DID, ref = "266"), family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5))
+glm_child <- glm(C003_01 ~ N_Child_HH + PR004ANDPR009_01 + relevel(DID, ref = "266"), family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5))
 
 glm_child %>% summary()
 ```
@@ -608,65 +569,12 @@ glm_child %>%
 ```
 
 
-#### dists_near_hunza_2. GLM Age >= 5 C003_01 ~ n_children_in_household + PR004_PR009_both_01
-
-```{r}
-glm_child <- glm(C003_01 ~ n_children_in_household + PR004_PR009_both_01, family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5, DID %in% dists_near_hunza_2))
-
-glm_child %>% summary()
-```
-
-##### Hosmer-Lemeshow
-
-```{r}
-hoslem.test(x = glm_child$y, y = fitted(glm_child))
-```
-
-
-#### dists_near_hunza_2 or Not. GLM Age >= 5 C003_01 ~ n_children_in_household + PR004_PR009_both_01 + DID_near_hunza_2
-
-```{r}
-glm_child <- glm(C003_01 ~ n_children_in_household + PR004_PR009_both_01 + DID_near_hunza_2, family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5))
-
-glm_child %>% summary()
-```
-
-##### Hosmer-Lemeshow
-
-```{r}
-hoslem.test(x = glm_child$y, y = fitted(glm_child))
-```
-
-
-
-#### Not dists_near_hunza. GLM Age >= 5 C003_01 ~ n_children_in_household + PR004_PR009_both_01 + as.factor(H004)
-
-```{r}
-glm_child <- glm(C003_01 ~ n_children_in_household + C002_01 + PR004_PR009_both_01 + as.factor(H004), family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5, !DID %in% dists_near_hunza_2))
-
-glm_child %>% summary()
-```
-
-##### Hosmer-Lemeshow
-
-```{r}
-hoslem.test(x = glm_child$y, y = fitted(glm_child))
-```
-
-##### multicolinearity
-
-```{r}
-vif(glm_child)
-```
-
-
-
-#### Each Dist. GLM Age >= 5 C003_01 ~ n_children_in_household + PR004_PR009_both_01
+#### Each Dist. GLM Age >= 5 C003_01 ~ N_Child_HH + PR004ANDPR009_01
 
 ```{r}
 each_dist <- sapply(as.numeric(as.character(unique(child_ica_dummy$DID))), function(id){
   child_ica_dummy <- child_ica_dummy %>% filter(DID == id)
-  glm_child <- glm(C003_01 ~ n_children_in_household + PR004_PR009_both_01, 
+  glm_child <- glm(C003_01 ~ N_Child_HH + PR004ANDPR009_01, 
                    family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5))
   temp_hoslem <- hoslem.test(x = glm_child$y, y = fitted(glm_child))
   data.frame(DID = id, hoslem_p_value = temp_hoslem$p.value)
@@ -700,10 +608,10 @@ dists_not_fit <- each_dist %>%
 ```
 
 
-#### Not dists_not_fit. GLM Age >= 5 C003_01 ~ n_children_in_household + PR004_PR009_both_01
+#### Not dists_not_fit. GLM Age >= 5 C003_01 ~ N_Child_HH + PR004ANDPR009_01
 
 ```{r}
-glm_child <- glm(C003_01 ~ n_children_in_household + PR004_PR009_both_01, family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5, !DID %in% dists_not_fit))
+glm_child <- glm(C003_01 ~ N_Child_HH + PR004ANDPR009_01, family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5, !DID %in% dists_not_fit))
 
 glm_child %>% summary()
 ```
