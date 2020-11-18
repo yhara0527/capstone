@@ -4,6 +4,7 @@ author: "Yusei Hara"
 date: "2020/11/14"
 output:
   word_document:
+    reference_docx: style.docx
     toc: yes
     toc_depth: '3'
   html_document:
