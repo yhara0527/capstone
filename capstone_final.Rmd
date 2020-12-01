@@ -4,11 +4,9 @@ author: "Yusei Hara"
 date: "2020/11/14"
 output:
   word_document:
-    reference_docx: style.docx
     toc: yes
     toc_depth: '3'
   html_document:
-    css: capstone_final.css
     code_folding: hide
     toc: yes
     toc_depth: 3
@@ -40,6 +38,7 @@ library(car)
 library(ResourceSelection) # to excute Hosmer-Lemeshow test
 library(equatiomatic)      # to convert model to equation
 library(caret)
+library(patchwork)         # to put some plots togather
 require(ggiraph)
 require(ggiraphExtra)
 ```
@@ -252,14 +251,16 @@ remove(child_dname_2, child_dname_3, child_dname_4,
 #### Making Dataframe With Dummy Variables
 
 ```{r}
-child_ica_dummy <- child_ica %>% filter(!is.na(C002), !is.na(C003), !is.na(PR004), !is.na(PR009))
-child_ica_dummy$C002_01 <- ifelse(child_ica_dummy$C002 == -1, 1, 0)
-child_ica_dummy$C003_01 <- ifelse(child_ica_dummy$C003 == 3, 1, 0)     # currently-enrolled
+child_ica_dummy <- child_ica %>% filter(!is.na(C002), !is.na(C003), !is.na(PR004), !is.na(PR009), !is.na(H003))
+
+child_ica_dummy$Age <- child_ica_dummy$C001
+child_ica_dummy$Gender <- ifelse(child_ica_dummy$C002 == -1, 1, 0)
+child_ica_dummy$School.Enrollment <- ifelse(child_ica_dummy$C003 == 3, 1, 0)     # currently-enrolled
 child_ica_dummy$C003_1_01 <- ifelse(child_ica_dummy$C003 == 1, 1, 0)   # never-enrolled
 child_ica_dummy$C003_2_01 <- ifelse(child_ica_dummy$C003 == 2, 1, 0)   # drop-out
 child_ica_dummy$PR004_01 <- ifelse(child_ica_dummy$PR004 == -1, 1, 0)
 child_ica_dummy$PR009_01 <- ifelse(child_ica_dummy$PR009 == -1, 1, 0)
-child_ica_dummy$PR004ORPR009_01 <- ifelse(
+child_ica_dummy$Parents.Edu1 <- ifelse(
   child_ica_dummy$PR004 == -1 | child_ica_dummy$PR009 == -1, 1, 0)
 
 
@@ -267,16 +268,19 @@ child_ica_dummy$PR004_only_01 <- ifelse(
   child_ica_dummy$PR004 == -1 & child_ica_dummy$PR009 == 0, 1, 0)
 child_ica_dummy$PR009_only_01 <- ifelse(
   child_ica_dummy$PR004 == 0 & child_ica_dummy$PR009 == -1, 1, 0)
-child_ica_dummy$PR004ANDPR009_01 <- ifelse(
+child_ica_dummy$Parents.Edu2 <- ifelse(
   child_ica_dummy$PR004 == -1 & child_ica_dummy$PR009 == -1, 1, 0)
+
+child_ica_dummy$Household.Ownership <- ifelse(
+  child_ica_dummy$H003 == -1, 1, 0)
 ```
 
 ```{r}
-NCH <- child_ica_dummy %>% 
+Num.of.Child <- child_ica_dummy %>% 
   group_by(HHID) %>% 
-  summarize(NCH = length(unique(CID)))
+  summarize(Num.of.Child = length(unique(CID)))
 
-child_ica_dummy <- child_ica_dummy %>% left_join(NCH)
+child_ica_dummy <- child_ica_dummy %>% left_join(Num.of.Child)
 
 child_ica_dummy$H002_1_01 <- ifelse(child_ica_dummy$H002 == 1, 1, 0)
 child_ica_dummy$H002_2_01 <- ifelse(child_ica_dummy$H002 == 2, 1, 0)
@@ -303,7 +307,11 @@ child_ica_dummy$Federally_Administrated_Tribal_Areas <- ifelse(child_ica_dummy$R
 child_ica_dummy$DID <- as.factor(child_ica_dummy$DID)
 child_ica_dummy$C002 <- as.factor(child_ica_dummy$C002)
 child_ica_dummy$C003 <- as.factor(child_ica_dummy$C003)
-child_ica_dummy$H003 <- as.factor(child_ica_dummy$H003)
+# child_ica_dummy$School.Enrollment <- as.factor(child_ica_dummy$School.Enrollment)
+child_ica_dummy$Household.Ownership <- as.factor(child_ica_dummy$Household.Ownership)
+child_ica_dummy$Parents.Edu1 <- as.factor(child_ica_dummy$Parents.Edu1)
+child_ica_dummy$Parents.Edu2 <- as.factor(child_ica_dummy$Parents.Edu2)
+child_ica_dummy$Gender <- as.factor(child_ica_dummy$Gender)
 ```
 
 
@@ -314,10 +322,12 @@ child_ica_dummy$H003 <- as.factor(child_ica_dummy$H003)
 
 ```{r}
 child_ica %>% 
-  summarize(C002_na = sum(is.na(C002)),
-            C003_na = sum(is.na(C003)),
-            PR004_na = sum(is.na(PR004)),
-            PR009_na = sum(is.na(PR009)))
+  summarize(
+    School.Enrollment_NA = sum(is.na(C003)),
+    Gender_NA = sum(is.na(C002)),
+    Parents.Edu_NA = sum(is.na(PR004))+sum(is.na(PR009)),
+    Household.Ownership_NA = sum(is.na(H003))
+    )
 ```
 
 #### Eliminated Rows in Total
@@ -329,16 +339,77 @@ data.frame(original_rows = nrow(child_ica),
 
 ```
 
+```{r}
+child_ica %>%
+  summarize(
+    "Variables" = c(
+      "School.Enrollment_NA", 
+      "Gender_NA", 
+      "Parents.Edu_NA", 
+      "Household.Ownership_NA",
+      "Total"), 
+    "Deleted Rows" = c(
+      sum(is.na(C003)), 
+      sum(is.na(C002)), 
+      sum(is.na(PR004))+sum(is.na(PR009)), 
+      sum(is.na(H003)),
+      nrow(child_ica %>% filter(is.na(C003) | is.na(C002) | is.na(PR004) | is.na(PR009) | is.na(H003)))),
+    "Ratio" = c(
+      sum(is.na(C003))/nrow(child_ica),
+      sum(is.na(C002))/nrow(child_ica), 
+      (sum(is.na(PR004))+sum(is.na(PR009)))/nrow(child_ica), 
+      sum(is.na(H003))/nrow(child_ica),
+      nrow(child_ica %>% filter(is.na(C003) | is.na(C002) | is.na(PR004) | is.na(PR009) |  is.na(H003)))/nrow(child_ica))
+    )
+```
+
+
+
+
 #### Eliminated NAs Hunza
 
 ```{r}
 child_ica %>% 
   filter(DID == 266) %>% 
-  summarize(C002_na = sum(is.na(C002)),
-            C003_na = sum(is.na(C003)),
-            PR004_na = sum(is.na(PR004)),
-            PR009_na = sum(is.na(PR009)))
+  summarize(
+    "Variables" = c(
+      "School.Enrollment_NA", 
+      "Gender_NA", 
+      "Parents.Edu_NA", 
+      "Household.Ownership_NA",
+      "Total"), 
+    "Deleted Rows" = c(
+      sum(is.na(C003)), 
+      sum(is.na(C002)), 
+      sum(is.na(PR004))+sum(is.na(PR009)), 
+      sum(is.na(H003)),
+      nrow(child_ica %>% filter(DID == 266, is.na(C003) | is.na(C002) | is.na(PR004) | is.na(PR009) | is.na(H003)))),
+    "Ratio" = c(
+      sum(is.na(C003))/nrow(child_ica %>% filter(DID ==266)),
+      sum(is.na(C002))/nrow(child_ica %>% filter(DID ==266)), 
+      (sum(is.na(PR004))+sum(is.na(PR009)))/nrow(child_ica %>% filter(DID ==266)), 
+      sum(is.na(H003))/nrow(child_ica %>% filter(DID ==266)),
+      nrow(child_ica %>% filter(DID == 266, is.na(C003) | is.na(C002) | is.na(PR004) | is.na(PR009) |  is.na(H003)))/nrow(child_ica %>% filter(DID ==266)))
+    )
 ```
+
+
+```{r}
+child_ica %>% 
+  filter(DID == 266, is.na(H003)) %>% 
+  ggplot(aes(factor(PR004))) +
+  geom_histogram(stat = "count")
+```
+
+
+```{r}
+child_ica %>% 
+  filter(DID == 266, is.na(H003)) %>% 
+  ggplot(aes(factor(PR009))) +
+  geom_histogram(stat = "count")
+```
+
+
 
 #### Eliminated Rows in Total Hunza
 
@@ -353,19 +424,101 @@ data.frame(original_rows = nrow(child_ica %>% filter(DID == 266)),
 
 ## Hunza. Generalized Linear Models
 
+### Formulae
+
+
 ### Model 1 [NofChild + HHOwnership]
 
-#### Hunza. GLM Age >= 5 C003_01 ~ NCH + H003
+#### Hunza. GLM Age >= 5 School.Enrollment ~ Age + Gender + Parents.Edu1 
 
 ```{r}
-glm_child <- glm(C003_01 ~ NCH + H003, family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5, !is.na(H003), DID == 266))
+glm_child <- glm(School.Enrollment ~ Age + Gender + Parents.Edu1, family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5, !is.na(Household.Ownership), DID == 266))
+temp <- glm_child %>% summary()
+temp
+temp$coefficients %>% as.data.frame() %>% pull(`Pr(>|z|)`) %>% .[3] 
 
-ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE) +
-  theme(text = element_text(family = "serif")) +
-  xlab("Number of Children in Each House Hold") +
-  ylab("Enrollment") +
-  labs(color = "House Hold Ownership", fill = "House Hold Ownership")
+# ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE) +
+#   theme(text = element_text(family = "serif")) +
+#   xlab("Number of Children in Each House Hold") +
+#   ylab("Enrollment") +
+#   labs(color = "House Hold Ownership", fill = "House Hold Ownership")
 ```
+
+```{r, results="asis"}
+extract_eq(glm_child)
+```
+```{r , results="asis"}
+extract_eq(glm_child, use_coefs = TRUE)
+```
+
+
+##### exponential transformation
+
+```{r}
+exp(glm_child$coefficients)
+```
+
+##### confidence interval (intercept and coefficient)
+
+```{r}
+confint(glm_child, level = 0.95)
+```
+
+##### exponential transformation of confidence interval (odds ratio of intercept and coefficient)
+
+```{r}
+exp(confint(glm_child, level = 0.95))
+```
+
+##### Hosmer-Lemeshow
+
+```{r}
+hoslem.test(x = glm_child$y, y = fitted(glm_child), g = 10)
+```
+
+
+##### AIC
+
+```{r}
+extractAIC(glm_child)
+```
+
+##### BIC
+
+```{r}
+extractAIC(glm_child, k = log(nrow(glm_child$data)))
+```
+
+##### effectiveness of explanatory variables
+
+```{r}
+glm_child_null <- glm(School.Enrollment ~ 1, family = "binomial", 
+                      data = child_ica_dummy %>% filter(!is.na(Household.Ownership), C001 >= 5, DID == 266))
+anova(glm_child_null, glm_child, test = "Chisq")
+```
+
+##### variables selection
+
+```{r}
+step(glm_child_null, direction = "both",
+     scope = (~ Age + Gender + Num.of.Child + Parents.Edu1 + Household.Ownership))
+```
+
+### Model 2 [NofChild + HHOwnership]
+
+#### Hunza. GLM Age >= 5 School.Enrollment ~ Age + Gender + Num.of.Child + Household.Ownership
+
+```{r}
+glm_child <- glm(School.Enrollment ~ Age + Gender + Num.of.Child + Household.Ownership, family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5, !is.na(Household.Ownership), DID == 266))
+glm_child %>% summary()
+
+# ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE) +
+#   theme(text = element_text(family = "serif")) +
+#   xlab("Number of Children in Each House Hold") +
+#   ylab("Enrollment") +
+#   labs(color = "House Hold Ownership", fill = "House Hold Ownership")
+```
+
 ```{r, results="asis"}
 extract_eq(glm_child)
 ```
@@ -412,8 +565,8 @@ extractAIC(glm_child, k = log(nrow(glm_child$data)))
 ##### effectiveness of explanatory variables
 
 ```{r}
-glm_child_null <- glm(C003_01 ~ 1, family = "binomial", 
-                      data = child_ica_dummy %>% filter(!is.na(H003), C001 >= 5, DID == 266))
+glm_child_null <- glm(School.Enrollment ~ 1, family = "binomial", 
+                      data = child_ica_dummy %>% filter(!is.na(Household.Ownership), C001 >= 5, DID == 266))
 anova(glm_child_null, glm_child, test = "Chisq")
 ```
 
@@ -421,14 +574,16 @@ anova(glm_child_null, glm_child, test = "Chisq")
 
 ```{r}
 step(glm_child_null, direction = "both",
-     scope = (~ C001 + C002_01 + NCH + H003))
+     scope = (~ Age + Gender + Num.of.Child + Parents.Edu1 + Household.Ownership))
 ```
+
+
 
 ```{r}
 child_ica_dummy %>% 
-  filter(!is.na(H003), C001 >= 5, DID == 266) %>% 
-  group_by(H003) %>% 
-  ggplot(aes(factor(PR004ANDPR009_01), fill = H003)) +
+  filter(!is.na(Household.Ownership), Age >= 5, DID == 266) %>% 
+  group_by(Household.Ownership) %>% 
+  ggplot(aes(factor(Parents.Edu2), fill = Household.Ownership)) +
   geom_bar(stat = "count") +
   theme(text = element_text(family = "serif"))
 ```
@@ -437,7 +592,7 @@ child_ica_dummy %>%
 ```{r}
 child_ica_dummy %>% 
   filter(DID == 266) %>% 
-  ggplot(aes(H003)) +
+  ggplot(aes(Household.Ownership)) +
   geom_bar() +
   geom_text(aes(label = ..count..), stat = "count", vjust = -.3) +
   scale_x_discrete(breaks = c(-1, 0, NA), labels = c("Yes(-1)", "No(0)", "NA")) +
@@ -447,214 +602,37 @@ child_ica_dummy %>%
 ```{r}
 child_ica_dummy %>% 
   filter(DID == 266) %>% 
-  ggplot(aes(factor(NCH), fill = H003)) +
+  ggplot(aes(factor(Num.of.Child), fill = Household.Ownership)) +
   geom_bar() +
   theme(text = element_text(family = "serif"))
 ```
 ```{r}
-child_ica_dummy %>% 
-  filter(DID == 266, !is.na(H003)) %>% 
-  ggplot(aes(factor(NCH), fill = H003)) +
+plot_3 <- child_ica_dummy %>% 
+  filter(DID == 266, !is.na(Household.Ownership)) %>% 
+  ggplot(aes(factor(Num.of.Child), fill = Household.Ownership)) +
   geom_bar(stat = "count", position = "fill") +
-  theme(text = element_text(family = "serif"))
-```
-
-```{r}
-child_ica_dummy %>% 
-  filter(C001 >= 5, DID == 266, !is.na(H003)) %>% 
-  group_by(NCH) %>% 
-  summarize(ownership_ratio = mean(H003 == -1)) %>% 
-  ggplot(aes(NCH, ownership_ratio)) +
-  geom_point() +
-  geom_smooth(method = "lm")+
-  ylim(c(0,1)) +
-  labs(title = "Correlation Between Number of Cihldren and House Hold Ownership?") +
-  theme(text = element_text(family = "serif"))
-```
-
-
-
-```{r}
-child_ica_dummy %>% 
-  filter(!is.na(H003)) %>% 
-  ggplot(aes(factor(NCH), fill = H003)) +
-  geom_bar(stat = "count", position = "fill") +
-  theme(text = element_text(family = "serif"))
-
-```
-
-
-### Model 2 [NofChild + ParentsBothEdu]
-
-#### Hunza. GLM Age >= 5 C003_01 ~ NCH + PR004ANDPR009_01
-
-```{r}
-glm_child <- glm(C003_01 ~ NCH + PR004ANDPR009_01, family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5, DID == 266))
-
-ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE) +
   theme(text = element_text(family = "serif")) +
-  xlab("Number of Children in Each House Hold") +
-  ylab("Enrollment") +
-  labs(color = "Parents' Education (Both)", fill = "Parents' Education (Both)")
-
-```
-```{r, results="asis"}
-extract_eq(glm_child)
-```
-```{r , results="asis"}
-extract_eq(glm_child, use_coefs = TRUE)
+  xlab("Num.of.Child") +
+  theme(legend.position = "bottom")
+plot_3
 ```
 
-##### exponential transformation
-
-```{r}
-exp(glm_child$coefficients)
-```
-
-##### confidence interval (intercept and coefficient)
-
-```{r}
-confint(glm_child, level = 0.95)
-```
-
-##### exponential transformation of confidence interval (odds ratio of intercept and coefficient)
-
-```{r}
-exp(confint(glm_child, level = 0.95))
-```
-
-##### Hosmer-Lemeshow
-
-```{r}
-hoslem.test(x = glm_child$y, y = fitted(glm_child))
-```
-
-##### AIC
-
-```{r}
-extractAIC(glm_child)
-```
-
-##### BIC
-
-```{r}
-extractAIC(glm_child, k = log(nrow(glm_child$data)))
-```
-
-##### effectiveness of explanatory variables
-
-```{r}
-glm_child_null <- glm(C003_01~1, family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5, DID == 266))
-anova(glm_child_null, glm_child, test = "Chisq")
-```
-
-##### variables selection
-
-```{r}
-step(glm_child_null, direction = "both", 
-     scope = (~ C001 + C002_01 + PR004ANDPR009_01 + PR004ORPR009_01 + NCH))
-```
-
-##### multicolinearity
-
-```{r}
-vif(glm_child)
-
-```
-
-```{r}
-child_ica_dummy %>% 
-  filter(DID == 266, C001 >= 5) %>% 
-  ggplot(aes(factor(NCH), fill = factor(PR004ANDPR009_01))) +
-  geom_bar(stat = "count", position = "stack") +
-  theme(text = element_text(family = "serif"))
-```
-```{r}
-child_ica_dummy %>% 
-  filter(DID == 266, C001 >= 5) %>% 
-  ggplot(aes(factor(NCH), fill = factor(PR004ANDPR009_01))) +
-  geom_bar(stat = "count", position = "fill") +
-  theme(text = element_text(family = "serif"))
-```
-```{r}
-child_ica_dummy %>% 
-  filter(C001 >= 5, DID == 266) %>% 
-  summarize()
-```
-
-
-
-### Model 3 [NofChild + ParentsEitherEdu]
-
-#### Hunza. GLM Age >= 5 C003_01 ~ NCH + PR004ORPR009_01
-
-```{r}
-glm_child <- glm(C003_01 ~ NCH + PR004ORPR009_01, family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5, DID == 266))
-
-ggPredict(glm_child, se = TRUE, colorAsFactor = TRUE, show.summary = TRUE, point = TRUE) +
-  theme(text = element_text(family = "serif")) +
-  xlab("Number of Children in Each House Hold") +
-  ylab("Enrollment") +
-  labs(color = "Parents' Education (Either)", fill = "Parents' Education (Either)")
-
-```
-```{r, results="asis"}
-extract_eq(glm_child)
-```
-```{r , results="asis"}
-extract_eq(glm_child, use_coefs = TRUE)
-```
-
-##### exponential transformation
-
-```{r}
-exp(glm_child$coefficients)
-```
-
-##### confidence interval (intercept and coefficient)
-
-```{r}
-confint(glm_child, level = 0.95)
-```
-
-##### exponential transformation of confidence interval (odds ratio of intercept and coefficient)
-
-```{r}
-exp(confint(glm_child, level = 0.95))
-```
-
-##### Hosmer-Lemeshow
-
-```{r}
-hoslem.test(x = glm_child$y, y = fitted(glm_child))
-```
-
-##### AIC
-
-```{r}
-extractAIC(glm_child)
-```
-
-##### BIC
-
-```{r}
-extractAIC(glm_child, k = log(nrow(glm_child$data)))
-```
 
 
 ## Pak. Generalized Linear Model
 
-### Model 1 [NofChild + HHOwnership]
+### Model 1 
 
-#### Each Dist. GLM Age >= 5 C003_01 ~ NCH + H003
+#### Each Dist. GLM Age >= 5 School.Enrollment ~ Age + Gender + Num.of.Child + Household.Ownership
 
 ```{r}
 each_dist <- sapply(as.numeric(as.character(unique(child_ica_dummy$DID))), function(id){
   child_ica_dummy <- child_ica_dummy %>% filter(DID == id)
-  glm_child <- glm(C003_01 ~ NCH + H003, 
-                   family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5, !is.na(H003)))
-  temp_hoslem <- hoslem.test(x = glm_child$y, y = fitted(glm_child))
-  data.frame(DID = id, hoslem_p_value = temp_hoslem$p.value)
+  glm_child <- glm(School.Enrollment ~ Age + Gender + Num.of.Child + Household.Ownership, 
+                   family = "binomial", data = child_ica_dummy %>% filter(Age >= 5, !is.na(Household.Ownership)))
+  temp <- glm_child %>% summary()
+  gender_p <- temp$coefficients %>% as.data.frame() %>% pull(`Pr(>|z|)`) %>% .[3]
+  data.frame(DID = id, gender_p = gender_p)
 }) %>% t()
 ```
 
@@ -664,8 +642,8 @@ each_dist <- each_dist %>%
 each_dist$DID <- each_dist %>% 
   pull(DID) %>% 
   as.numeric()
-each_dist$hoslem_p_value <- each_dist %>% 
-  pull(hoslem_p_value) %>% 
+each_dist$gender_p <- each_dist %>% 
+  pull(gender_p) %>% 
   as.numeric()
 each_dist
 ```
@@ -673,8 +651,8 @@ each_dist
 #### Dists with P value <= 0.05
 
 ```{r}
-DID_HosLem0.05_model_1 <- each_dist %>% 
-  filter(hoslem_p_value <= 0.05) %>% 
+DID_gender_P0.05 <- each_dist %>% 
+  filter(gender_p >= 0.05) %>% 
   pull(DID)
 ```
 
@@ -691,16 +669,16 @@ ica %>%
                summarize(x = unique(x),
                          y = unique(y),
                          DID = unique(DID)),
-             aes(x, y, color = DID %in% DID_HosLem0.05_model_1)) +
+             aes(x, y, color = DID %in% DID_gender_P0.05)) +
   geom_text_repel(data = child_ica_dummy %>% 
-              filter(DID %in% DID_HosLem0.05_model_1, !is.na(x)) %>% 
+              filter(DID %in% DID_gender_P0.05, !is.na(x)) %>% 
               summarize(x = unique(x),
                         y = unique(y),
                         DID = unique(DID),
                         DNAME = unique(DNAME)),
             aes(x, y, label = DNAME), force = 2) +
-  ggtitle("Districts in Which Model 1 Doesn't Fit") +
-  labs(color = "Districts \n Hosmer Lemeshow <= 0.05") +
+  ggtitle("Districts with Gender Parity") +
+  labs(color = "Districts \n Gender p value > 0.05") +
   theme(text = element_text(family = "serif")) +
   xlab("Longitude") +
   ylab("Latitude")
@@ -708,105 +686,119 @@ ica %>%
 
 
 ```{r}
+ica %>% 
+  mutate(centroid = st_centroid(geometry),
+    x = st_coordinates(centroid)[,1],
+    y = st_coordinates(centroid)[,2]) %>% 
+    ggplot(ratio = 1) +
+  coord_sf() +
+  geom_sf(ratio = 1, aes(fill = Province)) +
+  geom_point(data = child_ica_dummy %>% 
+               filter(!is.na(x)) %>% 
+               summarize(x = unique(x),
+                         y = unique(y),
+                         DID = unique(DID)),
+             aes(x, y, color = DID %in% DID_gender_P0.05)) +
+  scale_color_manual(values = c("darkgrey", "white")) +
+  geom_text_repel(data = child_ica_dummy %>% 
+              filter(DID %in% DID_gender_P0.05, !is.na(x)) %>% 
+              summarize(x = unique(x),
+                        y = unique(y),
+                        DID = unique(DID),
+                        DNAME = unique(DNAME)),
+            aes(x, y, label = DNAME), family = "serif", force = 10, color = "black", label.padding = .1, box.padding = .5) +
+  ggtitle("") +
+  guides(color = FALSE) +
+  theme(text = element_text(family = "serif"),title = element_text(family = "serif"),aspect.ratio = 1) +
+  xlab("") +
+  ylab("") 
+```
+```{r}
+ggsave("map_gender.png", unit = "cm", width = 25, dpi = 300)
+```
+
+```{r}
 child_ica_dummy %>% 
-  filter(C001 >= 5, DID %in% DID_HosLem0.05_model_1) %>% 
-  group_by(DID, C001, C002) %>% 
-  mutate(rate = mean(C003 == 3)) %>% 
-  ggplot(aes(C001, rate, color = C002)) +
+  filter(Age >= 5, DID %in% DID_gender_P0.05, !is.na(Household.Ownership)) %>% 
+  group_by(DID, Age, Gender) %>% 
+  mutate(rate = mean(School.Enrollment == 1)) %>% 
+  ggplot(aes(Age, rate, color = factor(Gender))) +
   geom_line() +
   facet_wrap(.~DNAME) +
+  labs(title = "Districts with Gender Parity", color = "Gender \n -1: Female, 0: Male") +
   xlab("Age") +
-  ylab("Enrollment Rate") +
-  labs(title = "Districts Where Model 1 Don't Fit Well", 
-       caption = "More detailed analysis will be left for the future research, \n but it is clear that in some districts, gender and age matter.",
-       color = "Gender") +
+  ylab("Current Enrollment Rate") +
+  theme(text = element_text(family = "serif")) 
+```
+
+```{r}
+ggsave("dists_gender.png", unit = "cm", dpi = 300)
+```
+
+
+
+
+
+
+## Appendix
+
+### Parents.Edu1 & Num.of.Child
+
+```{r}
+child_ica_dummy %>% 
+  filter(DID == 266, Age >= 5) %>% 
+  ggplot(aes(factor(Num.of.Child), fill = factor(Parents.Edu1))) +
+  geom_bar(stat = "count", position = "stack") +
   theme(text = element_text(family = "serif"))
 ```
-
-### Model 2 [NofChild + ParentsBothEdu]
-
-#### Whole Pak. GLM Age >= 5 C003_01 ~ NCH + PR004ANDPR009_01 + relevel(DID, ref = "266")
-
 ```{r}
-glm_child <- glm(C003_01 ~ NCH + PR004ANDPR009_01 + relevel(DID, ref = "266"), family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5))
-
-glm_child %>% summary()
+plot_1 <- child_ica_dummy %>% 
+  filter(DID == 266, Age >= 5) %>% 
+  ggplot(aes(factor(Num.of.Child), fill = factor(Parents.Edu1))) +
+  geom_bar(stat = "count", position = "fill") +
+  theme(text = element_text(family = "serif"), legend.position = "bottom") +
+  labs(fill = "Parents.Edu1") +
+  xlab("Num.of.Child") 
+plot_1
 ```
 
+### Parents.Edu2 & Num.of.Child
+
 ```{r}
-glm_child %>% 
-  summary() %>% 
-  .$coefficient %>% 
-  as.data.frame() %>% 
-  select(`Pr(>|z|)`) %>% 
-  filter(`Pr(>|z|)` > 0.05) %>% 
-  row.names() %>% 
-  str_split("\\)") %>% 
-  as.data.frame() %>% 
-  gather() %>% 
-  select(value) %>% 
-  .[seq(2,24,2),] %>% 
-  as.numeric()
+child_ica_dummy %>% 
+  filter(DID == 266, Age >= 5) %>% 
+  ggplot(aes(factor(Num.of.Child), fill = factor(Parents.Edu2))) +
+  geom_bar(stat = "count", position = "stack") +
+  theme(text = element_text(family = "serif"))
 ```
-
-
-#### Each Dist. GLM Age >= 5 C003_01 ~ NCH + PR004ANDPR009_01
-
 ```{r}
-each_dist <- sapply(as.numeric(as.character(unique(child_ica_dummy$DID))), function(id){
-  child_ica_dummy <- child_ica_dummy %>% filter(DID == id)
-  glm_child <- glm(C003_01 ~ NCH + PR004ANDPR009_01, 
-                   family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5))
-  temp_hoslem <- hoslem.test(x = glm_child$y, y = fitted(glm_child))
-  data.frame(DID = id, hoslem_p_value = temp_hoslem$p.value)
-}) %>% t()
-```
-
-```{r}
-each_dist <- each_dist %>% 
-  as.data.frame() 
-each_dist$DID <- each_dist %>% 
-  pull(DID) %>% 
-  as.numeric()
-each_dist$hoslem_p_value <- each_dist %>% 
-  pull(hoslem_p_value) %>% 
-  as.numeric()
-each_dist
-```
-
-#### Dists with P value <= 0.05
-
-```{r}
-each_dist %>% 
-  filter(hoslem_p_value <= 0.05)
-```
-
-```{r}
-dists_not_fit <- each_dist %>% 
-  filter(hoslem_p_value <= 0.05) %>% 
-  pull(DID)
+child_ica_dummy %>% 
+  filter(DID == 266, Age >= 5) %>% 
+  ggplot(aes(factor(Num.of.Child), fill = factor(Parents.Edu2))) +
+  geom_bar(stat = "count", position = "fill") +
+  theme(text = element_text(family = "serif")) +
+  xlab("Num.of.Child")
 ```
 
 
-#### Not dists_not_fit. GLM Age >= 5 C003_01 ~ NCH + PR004ANDPR009_01
-
 ```{r}
-glm_child <- glm(C003_01 ~ NCH + PR004ANDPR009_01, family = "binomial", data = child_ica_dummy %>% filter(C001 >= 5, !DID %in% dists_not_fit))
-
-glm_child %>% summary()
-```
-
-##### Hosmer-Lemeshow
-
-```{r}
-hoslem.test(x = glm_child$y, y = fitted(glm_child))
+plot_2 <- child_ica_dummy %>% 
+  filter(DID == 266, Age >= 5) %>% 
+  ggplot(aes(Household.Ownership, fill = factor(Parents.Edu1))) +
+  geom_bar(stat = "count", position = position_fill()) +
+  theme(text = element_text(family = "serif"),legend.position = "bottom") +
+  labs(fill = "Parents.Edu1")
+plot_2
 ```
 
 
+```{r}
+plot_1 + plot_2 + plot_3
+```
 
-
-
-
+```{r}
+ggsave("plot_multico.png", unit = "cm", dpi = 300, width = 30)
+```
 
 
 
@@ -873,7 +865,6 @@ hoslem.test(x = glm_child$y, y = fitted(glm_child))
 <!-- vif(glm_child) -->
 
 <!-- ``` -->
-
 
 
 
