@@ -84,7 +84,18 @@ server <- function(input, output) {
           if (input$gender=="female"){
               gen_ind <- 1
           }
-          
+      # selected_prov <- switch(input$prov_id,
+      #        "punjab"=return("PUNJAB"),
+      #        "sindh"=return("SINDH"),
+      #        "balochistan"=return("BALOCHISTAN"),
+      #        "khyber pakhtunkhwa"=return("KHYBER PAKHTUNKHWA"),
+      #        "gilgit baltistan"=return("GILGIT BALTISTAN"),
+      #        "azad kashmimr"=return("AZAD KASHMIR"),
+      #        "islamabad"=return("ISLAMABAD"),
+      #        "fata"=return("FATA")
+      # )
+      
+      
           co <- ica %>% 
             mutate(centroid = st_centroid(geometry),
                    x = st_coordinates(centroid)[,1],
@@ -121,9 +132,8 @@ server <- function(input, output) {
                  return(leaflet() %>% 
                           addProviderTiles(providers$Stamen.Toner) %>% 
                           setView(lat=mean(co$y), lng=mean(co$x), zoom = 5)%>% 
-                          addPolygons(data = ica,
+                          addPolygons(data = ica %>% filter(Province==toupper(input$prov_id)),
                                       weight = 1,
-                                      label = .$District,
                                       fillOpacity = 0.1) %>%  
                           addCircleMarkers(~temp_data$x, ~temp_data$y, label=paste(temp_data$DNAME,temp_data$rate),color=~pal(temp_data$rate), fillOpacity=0.6, radius = 7,stroke=FALSE, data = temp_data) %>% 
                           addLegend(position = "bottomright", pal = pal, values = ~rate,data = temp_data))

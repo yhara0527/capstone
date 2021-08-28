@@ -5,9 +5,9 @@ account: yhara
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 4529915
-bundleId: 4974309
+bundleId: 4974369
 url: https://yhara.shinyapps.io/aser_shiny/
-when: 1630136762.95561
-lastSyncTime: 1630136762.95561
+when: 1630139337.66158
+lastSyncTime: 1630139337.66158
 asMultiple: FALSE
 asStatic: FALSE

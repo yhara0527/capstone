@@ -914,7 +914,7 @@ ica %>%
                ungroup(),
              aes(x, y, color=rate))+
   facet_grid(~Gender)
-ica
+ica$Province %>% unique()
 ```
 
 library(leaflet)
