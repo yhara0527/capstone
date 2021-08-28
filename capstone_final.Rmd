@@ -3,15 +3,15 @@ title: "Capstone Final"
 author: "Yusei Hara"
 date: "2020/11/14"
 output:
-  word_document:
-    toc: yes
-    toc_depth: '3'
   html_document:
     code_folding: hide
     toc: yes
     toc_depth: 3
     toc_float:
       smooth_scroll: yes
+  word_document:
+    toc: yes
+    toc_depth: '3'
 ---
 
 ```{r setup, include=FALSE}
@@ -41,6 +41,7 @@ library(caret)
 library(patchwork)         # to put some plots togather
 require(ggiraph)
 require(ggiraphExtra)
+library(maptools)          # to plot PCA
 ```
 
 ### Data Installation
@@ -693,13 +694,14 @@ ica %>%
     ggplot(ratio = 1) +
   coord_sf() +
   geom_sf(ratio = 1, aes(fill = Province)) +
+  scale_fill_brewer(palette = "Pastel2", direction = -1, type = qual)+
   geom_point(data = child_ica_dummy %>% 
                filter(!is.na(x)) %>% 
                summarize(x = unique(x),
                          y = unique(y),
                          DID = unique(DID)),
              aes(x, y, color = DID %in% DID_gender_P0.05)) +
-  scale_color_manual(values = c("darkgrey", "white")) +
+  scale_color_manual(values = c("darkgrey", "red")) +
   geom_text_repel(data = child_ica_dummy %>% 
               filter(DID %in% DID_gender_P0.05, !is.na(x)) %>% 
               summarize(x = unique(x),
@@ -709,12 +711,14 @@ ica %>%
             aes(x, y, label = DNAME), family = "serif", force = 10, color = "black", label.padding = .1, box.padding = .5) +
   ggtitle("") +
   guides(color = FALSE) +
-  theme(text = element_text(family = "serif"),title = element_text(family = "serif"),aspect.ratio = 1) +
+  theme(text = element_text(family = "serif"),title = element_text(family = "serif"),aspect.ratio = 1, legend.position = "bottom" ) +
   xlab("") +
   ylab("") 
 ```
+
+
 ```{r}
-ggsave("map_gender.png", unit = "cm", width = 25, dpi = 300)
+ggsave("map_gender.png", unit = "cm", height = 20, dpi = 300)
 ```
 
 ```{r}
@@ -724,15 +728,15 @@ child_ica_dummy %>%
   mutate(rate = mean(School.Enrollment == 1)) %>% 
   ggplot(aes(Age, rate, color = factor(Gender))) +
   geom_line() +
-  facet_wrap(.~DNAME) +
-  labs(title = "Districts with Gender Parity", color = "Gender \n -1: Female, 0: Male") +
+  facet_wrap(RNAME~DNAME, ncol = 6) +
+  labs(color = "Gender \n 1: Female, 0: Male") +
   xlab("Age") +
   ylab("Current Enrollment Rate") +
-  theme(text = element_text(family = "serif")) 
+  theme(text = element_text(family = "serif"), legend.position = "bottom") 
 ```
 
 ```{r}
-ggsave("dists_gender.png", unit = "cm", dpi = 300)
+ggsave("dists_gender.png",height = 22, unit = "cm", dpi = 300)
 ```
 
 
@@ -801,9 +805,170 @@ ggsave("plot_multico.png", unit = "cm", dpi = 300, width = 30)
 ```
 
 
+```{r}
+child_ica_dummy %>% 
+  filter(DID == 266, Age >= 5) %>% 
+  group_by(Age, Gender) %>% 
+  mutate(enrollment = mean(School.Enrollment == 1)) %>% 
+  ggplot(aes(Age, enrollment, color = Gender)) +
+  geom_line() +
+  ylim(c(0,1)) +
+  ylab("School Enrollment Rate")
+```
+
+
+```{r}
+child_ica_dummy %>% 
+  filter(DID == 266, Age >= 5) %>% 
+  ggplot(aes())
+```
+
+
+```{r}
+# child_ica_dummy %>%
+#   mosaicplot( ~ School.Enrollment + Gender + Num.of.Child,
+#        highlighting = "School.Enrollment", highlighting_fill = c("lightblue", "pink"),
+#        direction = c("v", "h", "h"))
+```
 
 
 
+
+
+# examination
+from here, temp
+
+```{r}
+prcomp(child_ica_dummy %>% 
+         select(School.Enrollment, Gender, Num.of.Child))
+rpca <- child_ica_dummy %>% 
+  select(School.Enrollment, Gender, Num.of.Child) %>% 
+  mutate(School.Enrollment = as.numeric(School.Enrollment),
+         Gender = as.numeric(Gender),
+         Num.of.Child = as.numeric(Num.of.Child)) %>% 
+  prcomp()
+
+```
+```{r}
+plot(x=NULL,type="n",xlab="PC1",ylab="PC2",xlim=c(-5,5),ylim=c(-5,5),xaxs="i",yaxs="i",xaxt="n",yaxt="n",bty="n") + 
+  axis(side=1,at=seq(-5,5,1),tck=1.0,lty="dotted",lwd=0.5,col="#dddddd",labels=expression(-5,-4,-3,-2,-1,0,1,2,3,4,5))+
+  axis(side=2,at=seq(-5,5,1),tck=1.0,lty="dotted",lwd=0.5,col="#dddddd",labels=expression(-5,-4,-3,-2,-1,0,1,2,3,4,5))+
+  points(x=rpca$x[,1],y=rpca$x[,2],pch=16,col="#ff8c00")+
+  pointLabel(x=rpca$x[,1],y=rpca$x[,2],labels=rownames(mtcars),cex=0.8)+
+  box(bty="l")
+```
+
+
+
+```{r}
+child_ica_dummy %>% mean(School.Enrollment)
+ica %>% 
+  mutate(centroid = st_centroid(geometry),
+    x = st_coordinates(centroid)[,1],
+    y = st_coordinates(centroid)[,2]) %>% 
+    ggplot(ratio = 1) +
+  coord_sf() +
+  geom_sf(ratio = 1, aes(fill = Province)) +
+  scale_fill_brewer(palette = "Pastel2", direction = -1, type = qual)+
+  geom_point(data = child_ica_dummy %>% 
+               filter(!is.na(x)) %>% 
+               group_by(DID) %>% 
+               group_by(Gender) %>% 
+               mutate(rate= .$School.Enrollment %>% mean()) %>% 
+               ungroup %>% 
+               summarize(x = unique(x),
+                         y = unique(y),
+                         DID = unique(DID),
+                         rate=unique(rate)),
+             aes(x, y, color = rate))
+  #scale_color_manual(values = c("darkgrey", "red")) 
+  # geom_text_repel(data = child_ica_dummy %>% 
+  #             filter(DID %in% DID_gender_P0.05, !is.na(x)) %>% 
+  #             summarize(x = unique(x),
+  #                       y = unique(y),
+  #                       DID = unique(DID),
+  #                       DNAME = unique(DNAME)),
+  #           aes(x, y, label = DNAME), family = "serif", force = 10, color = "black", label.padding = .1, box.padding = .5) +
+  # ggtitle("") +
+  # guides(color = FALSE) +
+  # theme(text = element_text(family = "serif"),title = element_text(family = "serif"),aspect.ratio = 1, legend.position = "bottom" ) +
+  # xlab("") +
+  # ylab("") 
+```
+
+```{r}
+child_ica_dummy$DNAME %>% unique()
+
+ica %>% 
+  mutate(centroid = st_centroid(geometry),
+    x = st_coordinates(centroid)[,1],
+    y = st_coordinates(centroid)[,2]) %>% 
+    ggplot(ratio = 1) +
+  coord_sf() +
+  geom_sf(ratio = 1, aes(fill = Province)) +
+  scale_fill_brewer(palette = "Pastel2", direction = -1, type = qual)+
+  geom_point(data = child_ica_dummy %>% 
+               filter(!is.na(x)) %>% 
+               group_by(DID,Gender) %>% 
+               mutate(rate= mean(School.Enrollment)) %>% 
+               ungroup(),
+             aes(x, y, color=rate))+
+  facet_grid(~Gender)
+ica
+```
+
+library(leaflet)
+
+```{r}
+
+ica %>% 
+  mutate(centroid = st_centroid(geometry),
+    x = st_coordinates(centroid)[,1],
+    y = st_coordinates(centroid)[,2]) %>% 
+    ggplot(ratio = 1) +
+  coord_sf() +
+  geom_sf(ratio = 1) +
+  geom_point(data = child_ica_dummy %>% 
+               filter(!is.na(x)) %>% 
+               summarize(x = unique(x),
+                         y = unique(y),
+                         DID = unique(DID)),
+             aes(x, y, color = DID %in% DID_gender_P0.05)) +
+  geom_text_repel(data = child_ica_dummy %>% 
+              filter(DID %in% DID_gender_P0.05, !is.na(x)) %>% 
+              summarize(x = unique(x),
+                        y = unique(y),
+                        DID = unique(DID),
+                        DNAME = unique(DNAME)),
+            aes(x, y, label = DNAME), force = 2) +
+  ggtitle("Districts with Gender Parity") +
+  labs(color = "Districts \n Gender p value > 0.05") +
+  theme(text = element_text(family = "serif")) +
+  xlab("Longitude") +
+  ylab("Latitude")
+
+co <- ica %>% 
+  mutate(centroid = st_centroid(geometry),
+         x = st_coordinates(centroid)[,1],
+         y = st_coordinates(centroid)[,2]) 
+
+temp_data <- child_ica_dummy %>% 
+  filter(!is.na(x),Gender==1) %>%
+  group_by(DID) %>%
+  summarise(rate=mean(School.Enrollment),
+            x=unique(x),
+            y=unique(y),
+            DNAME=unique(DNAME))
+
+pal <- colorNumeric(palette="Blues", domain=temp_data$rate)
+
+
+leaflet() %>% 
+  addTiles() %>% 
+  setView(lat=mean(co$y), lng=mean(co$x), zoom = 5)%>% 
+  addCircleMarkers(~temp_data$x, ~temp_data$y, label=paste(temp_data$DNAME,temp_data$rate),color=~pal(temp_data$rate), stroke=FALSE, data = temp_data) %>% 
+  addLegend(position = "bottomright", pal = pal, values = ~rate,data = temp_data)
+```
 
 <!-- ### memo -->
 
@@ -865,6 +1030,7 @@ ggsave("plot_multico.png", unit = "cm", dpi = 300, width = 30)
 <!-- vif(glm_child) -->
 
 <!-- ``` -->
+
 
 
 
