@@ -1,5 +1,5 @@
 #    http://shiny.rstudio.com/
-#
+
 library(shiny)
 library(tidyverse)
 library(ggplot2)
@@ -22,15 +22,22 @@ library(rsconnect)
 library(leaflet)
 library(mapview)
 library(leafsync)
+
+#setwd('C:/Program Files/R/capstone/aser_shiny')
+
 #rsconnect::setAccountInfo(name='yhara', token='7A3D7C23C04C0790CB0A2BCD513893B7', secret='mHKt46XZuYZpkRGquqTandCedRLYb2B3B2GTw1O6')
 #deployApp()
 
 
 # # saveRDS(ica, "ica1")
-ica <- readRDS("ica1")
+#ica <- readRDS("ica1")
+ica <- readRDS("C:/Program Files/R/capstone/aser_shiny/ica1")
+
 
 # saveRDS(child_ica_dummy, "cid")
-child_ica_dummy <- readRDS("cid")
+#child_ica_dummy <- readRDS("cid")
+child_ica_dummy <- readRDS("C:/Program Files/R/capstone/aser_shiny/cid")
+
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(

@@ -1,3 +1,8 @@
+
+
+# when a error of loading files, run a line of code below
+#setwd("c://Program Files//R//capstone")
+
 library(tidyverse)
 library(ggplot2)
 library(stringr)
